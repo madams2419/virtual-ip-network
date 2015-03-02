@@ -1,5 +1,5 @@
-#ifndef NODE_H
-#define NODE_H
+#ifndef IPLAYER_H
+#define IPLAYER_H
 
 #include <vector>
 #include <string>
@@ -13,17 +13,14 @@
 
 using namespace std;
 
-
-typedef struct {
-	string des;
-	int cost;
-	string nextHop;
-} RouteEntry;
-
-class Node{
+class AppLayer {
 
 	private:
-		RouteEntry localTable[MAX_ROUTES];
-		sockaddr_in nodeInfo;
+		void start();
+
+	public:
+		AppLayer();
 
 };
+
+#endif
