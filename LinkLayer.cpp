@@ -24,11 +24,7 @@ class LinkLayer {
 		phy_info localPhy;
 		vector<itf_info> itfs;
 		struct addrinfo* localAI;
-
 		int rcvSocket;
-		vector<int> sendSockets;
-
-		vector< vector<char> > packetQueue; // not sure if queue is an c++ implementation
 
 		void start();
 		int createSocket(phy_info phyInfo, struct addrinfo* ai, bool bindSock);
@@ -43,7 +39,6 @@ class LinkLayer {
 LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	this->localPhy = localPhy;
 	this->itfs = itfs;
-
 	localAI = new struct addrinfo;
 	rcvSocket = createSocket(localPhy, localAI, true);
 }
@@ -53,7 +48,7 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
  */
 int LinkLayer::send(char* data, int dataLen, int itfNum) {
 	int sendSocket, bytesSent;
-	struct addrinfo *aiDest;
+	struct addrinfo *aiDest = new struct addrinfo;
 
 	sendSocket = createSocket(itfs[itfNum].rmtPhy, aiDest, false);
 
