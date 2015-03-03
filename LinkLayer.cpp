@@ -23,7 +23,7 @@ class LinkLayer {
 	private:
 		phy_info localPhy;
 		vector<itf_info> itfs;
-		struct addrinfo *localAI;
+		struct addrinfo* localAI;
 
 		int rcvSocket;
 		vector<int> sendSockets;
@@ -31,14 +31,12 @@ class LinkLayer {
 		vector< vector<char> > packetQueue; // not sure if queue is an c++ implementation
 
 		void start();
-		int createSocket(phy_info phyInfo, struct addrinfo *ai, bool bindSock);
+		int createSocket(phy_info phyInfo, struct addrinfo* ai, bool bindSock);
 
 	public:
 		LinkLayer(phy_info localPhy, vector<itf_info> itfs);
-		int createListener(phy_info phyInfo);
-		bool hasData();
-		vector<char> getData();
-		bool sendData(char* data, int dataLen, int itfNum);
+		int send(char* data, int dataLen, int itfNum);
+		int listen(char* buf, int bufLen);
 
 };
 
@@ -46,61 +44,70 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	this->localPhy = localPhy;
 	this->itfs = itfs;
 
+	localAI = new struct addrinfo;
 	rcvSocket = createSocket(localPhy, localAI, true);
 }
 
 /**
  * Sends dataLen bytes of data over the interface specified by itfNum
  */
-bool LinkLayer::sendData(char* data, int dataLen, int itfNum) {
+int LinkLayer::send(char* data, int dataLen, int itfNum) {
 	int sendSocket, bytesSent;
-	struct addrinfo *dstAI;
+	struct addrinfo *aiDest;
 
-	sendSocket = createSocket(itfs[itfNum].rmtPhy, dstAI, false);
+	sendSocket = createSocket(itfs[itfNum].rmtPhy, aiDest, false);
 
-	if ((bytesSent = sendto(sendSocket, data, dataLen, 0, dstAI->ai_addr, dstAI->ai_addrlen)) == -1) {
-		perror("talker: sendto");
-		exit(1);
+	if ((bytesSent = sendto(sendSocket, data, dataLen, 0, aiDest->ai_addr, aiDest->ai_addrlen)) == -1) {
+		perror("Send error:");
+		return -1;
 	}
 
-	freeaddrinfo(dstAI);
+	freeaddrinfo(aiDest);
 
 	printf("Sent %d bytes over interface %d\n", bytesSent, itfNum);
 	close(sendSocket);
 
+	return bytesSent;
+}
+
+int LinkLayer::listen(char* buf, int bufLen) {
+	int bytesRcvd;
+	if ((bytesRcvd = recvfrom(rcvSocket, buf, bufLen-1 , 0, NULL, NULL)) == -1) {
+		perror("Receive error:");
+		return -1;
+	}
 }
 
 /**
- * Creates socket and populates &aiRet with socket address info
+ * Creates UDP socket and populates &aiRet with socket address info
  */
-int LinkLayer::createSocket(phy_info phyInfo, struct addrinfo *aiRet, bool bindSock) {
-	int sockfd;
-	struct addrinfo hints, *ai, *servinfo;
-	int rv;
+int LinkLayer::createSocket(phy_info phyInfo, struct addrinfo* aiRet, bool bindSock) {
+	int sockfd, gai_ret;
+	struct addrinfo aiHints, *aiList, *ai;
 
 	// zero out address info hints structure
-	memset(&hints, 0, sizeof hints);
+	memset(&aiHints, 0, sizeof aiHints);
 
 	// populate address info hints
-	hints.ai_family = AF_INET; // IPv4
-	hints.ai_socktype = SOCK_DGRAM; // UDP
+	aiHints.ai_family = AF_INET; // IPv4
+	aiHints.ai_socktype = SOCK_DGRAM; // UDP
 
-	if ((rv = getaddrinfo(phyInfo.ipAddr, phyInfo.port, &hints, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+	if ((gai_ret = getaddrinfo(phyInfo.ipAddr, phyInfo.port, &aiHints, &aiList)) != 0) {
+		perror("Get address info error:");
 		return -1;
 	}
 
 	// loop through getaddrinfo() results. connect (and bind if flagged) to first one possible
-	for(ai = servinfo; ai != NULL; ai = ai->ai_next) {
+	for(ai = aiList; ai != NULL; ai = ai->ai_next) {
 		if ((sockfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) == -1) {
-			perror("listener: socket");
+			perror("Socket creation error:");
 			continue;
 		}
 
 		if (bindSock) {
 			if (bind(sockfd, ai->ai_addr, ai->ai_addrlen) == -1) {
 				close(sockfd);
-				perror("listener: bind");
+				perror("Socking binding error:");
 				continue;
 			}
 		}
@@ -109,21 +116,24 @@ int LinkLayer::createSocket(phy_info phyInfo, struct addrinfo *aiRet, bool bindS
 	}
 
 	if (ai == NULL) {
-		fprintf(stderr, "listener: failed to bind socket\n");
+		printf("No valid address info structure found.\n");
 		return -1;
 	}
 
 	// copy address info data
-	memset(&aiRet, 0, sizeof aiRet);
 	*aiRet = *ai;
 
-	freeaddrinfo(servinfo);
+	// free address info list
+	freeaddrinfo(aiList);
 
 	return sockfd;
 }
 
 /* This main just for testing */
 int main(int argc, char ** argv) {
+	int recv_len;
+	char msg[512], reply[512];
+
 	phy_info locPhy, rmtPhy;
 	itf_info itf;
 	vector<itf_info> itfs;
@@ -131,8 +141,8 @@ int main(int argc, char ** argv) {
 	locPhy.ipAddr = "127.0.0.1";
 	rmtPhy.ipAddr = "127.0.0.1";
 
-	locPhy.port = argv[1];
-	rmtPhy.port = argv[2];
+	locPhy.port = argv[2];
+	rmtPhy.port = argv[3];
 
 	itf.locAddr = "192.168.1.1";
 	itf.rmtAddr = "192.168.1.1";
@@ -140,7 +150,37 @@ int main(int argc, char ** argv) {
 
 	itfs.push_back(itf);
 
-	LinkLayer* l = new LinkLayer(locPhy, itfs);
+	LinkLayer* ll = new LinkLayer(locPhy, itfs);
+
+	if (argv[1][0] == 'l') { // node is listener
+
+		while (1) {
+			perror("Listening for packets:\n");
+			recv_len = ll->listen(reply, 512);
+			if (recv_len < 0) {
+				perror("Recv error:");
+				return 1;
+			}
+			reply[recv_len] = 0;
+			printf("Receive message:\n%s\n", reply);
+			memset(reply, 0, sizeof(reply));
+		}
+
+	} else if (argv[1][0] == 's') { // node is sender
+
+		while (1) {
+			fflush(stdin);
+			printf("Enter message: \n");
+			gets(msg);
+			if (ll->send(msg, 512, 0) < 0) {
+				perror("Send error:");
+				return 1;
+			}
+		}
+
+	} else { // invalid argument
+		printf("Invalid argument.");
+	}
 }
 
 #endif
