@@ -130,6 +130,7 @@ int LinkLayer::createSocket(phy_info phyInfo, struct addrinfo* aiRet, bool bindS
 }
 
 /* This main just for testing */
+/*
 int main(int argc, char ** argv) {
 	int recv_len;
 	char msg[512], reply[512];
@@ -182,5 +183,5 @@ int main(int argc, char ** argv) {
 		printf("Invalid argument.");
 	}
 }
-
+*/
 #endif

@@ -3,11 +3,8 @@
 
 #include <vector>
 #include <string>
-#include <stdlib>
-#include <sys/socket>
+#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd>
-#include <netdb>
 #include "constants.h"
 
 
@@ -16,19 +13,19 @@ using namespace std;
 class LinkLayer {
 
 	private:
-		in_addr myAddr;
-		in_addr remoteAddr;
-		PhyInfo myPhyInfo;
-		queue packetQueue; // not sure if queue is an c++ implementation
-
+		phy_info localPhy;
+		vector<itf_info> itfs;
+		struct addrinfo* localAI;
+		int rcvSocket;
+		vector<int> sendSockets;
+		vector< vector<char> > packetQueue;
 		void start();
-
+		int createSocket(phy_info phyInfo, struct addrinfo* ai, bool bindSock);
 	public:
-		LinkLayer(in_addr locAddr, in_addr remAddr, PhyInfo phyInfo);
-		bool hasData();
-		byte[] getData();
-		bool sendData();
-
+		LinkLayer(phy_info localPhy, vector<itf_info> itfs);
+		int send(char* data, int dataLen, int itfNum);
+		int listen(char* buf, int bufLen);
 };
 
 #endif
+

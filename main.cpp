@@ -8,7 +8,7 @@
 #include <netdb.h>
 
 #include "AppLayer.h"
-
+#include "LinkLayer.h"
 
 using namespace std;
 
@@ -42,15 +42,32 @@ int main (int argc, char** argv){
 		fileInfo[0] = DEFAULT_IP;
 	}
 
-	for(int i = 2; i < count; i = i+4){
+	vector<itf_info> nodeItfs;
+
+	for(int i = 2; i < count;){
 		if(fileInfo[i].compare("localhost") == 0){
 			fileInfo[i] = DEFAULT_IP;
 		}
+		itf_info newItf;
+		phy_info newPhy;
+		newPhy.ipAddr = const_cast<char* >(fileInfo[i].c_str());
+		i++;
+		newPhy.port = const_cast<char* >(fileInfo[i].c_str());
+		i++;
+		newItf.rmtPhy = newPhy;
+		newItf.locAddr = const_cast<char* >(fileInfo[i].c_str());
+		i++;
+		newItf.rmtAddr = const_cast<char* >(fileInfo[i].c_str());
+		i++;
+		nodeItfs.push_back(newItf);
 	}
 
 	phy_info myPhyInfo;
 	myPhyInfo.ipAddr = const_cast<char* >(fileInfo[0].c_str());
 	myPhyInfo.port = const_cast<char* >(fileInfo[1].c_str());
+
+	LinkLayer nodeLink(myPhyInfo, nodeItfs);
+
 	string input = "";
 	AppLayer myApp;
 	while(1){
