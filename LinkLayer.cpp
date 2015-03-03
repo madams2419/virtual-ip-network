@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 #include <stdio.h>
 #include <string.h>
@@ -17,6 +18,12 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	this->itfs = itfs;
 	localAI = new struct addrinfo;
 	rcvSocket = createSocket(localPhy, localAI, true);
+	cout << "In LinkLayer: "<< endl;
+	cout << "The localPhy info: localhost is " << localPhy.ipAddr << " port is " << localPhy.port << endl;
+	for(vector<itf_info>::size_type i = 0; i != itfs.size(); i++){
+		cout << "In the " << i << "th itf: " << " Remote phy: address is " << itfs[i].rmtPhy.ipAddr << " port is " << itfs[i].rmtPhy.port << endl;
+		cout << "                 locAddr is " << itfs[i].locAddr << ", rmtAddr is " << itfs[i].rmtAddr << endl;
+	}
 }
 
 /**

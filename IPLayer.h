@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 #include <queue>
+#include <string>
 
 #include "constants.h"
 #include "LinkLayer.h"
@@ -26,7 +27,7 @@ class IPLayer {
 		void decrementTTL(char* packet);
 		void deliverLocal(char* packet);
 		struct iphdr* genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr);
-		static void runThread(ipl_thread_pkg* pkg);
+		static void runThread(ipl_thread_pkg pkg);
 
 	public:
 		IPLayer(LinkLayer* linkLayer);

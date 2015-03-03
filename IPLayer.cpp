@@ -18,6 +18,8 @@
 #include "ip.h"
 //#include <netinet/ip.h>
 
+#include "IPLayer.h"
+
 #define MAX_MSG_LEN (512)
 #define HDR_SIZE sizeof(struct iphdr)
 
@@ -31,7 +33,8 @@ IPLayer::IPLayer(LinkLayer* link) {
 	ipl_thread_pkg* pkg = new ipl_thread_pkg;
 	pkg->ipl = this;
 	pkg->toRun = "forwarding";
-	int err = pthread_create(fwdWorker, NULL, runThread, this);
+	int err = 0;
+	//int err = pthread_create(fwdWorker, NULL, runThread, this);
 	if(err != 0) {
 			perror("Threading error:");
 	}
