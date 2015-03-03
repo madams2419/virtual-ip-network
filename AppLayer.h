@@ -1,15 +1,9 @@
-#ifndef IPLAYER_H
-#define IPLAYER_H
+#ifndef APPLAYER_H
+#define APPLAYER_H
 
 #include <vector>
 #include <string>
-#include <stdlib>
-#include <sys/socket>
-#include <arpa/inet.h>
-#include <unistd>
-#include <netdb>
 #include "constants.h"
-
 
 using namespace std;
 
@@ -20,7 +14,7 @@ class AppLayer {
 
 	public:
 		AppLayer();
-
+		void runningApp(const string& command);
 };
 
 #endif
