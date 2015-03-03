@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
+
 #include "LinkLayer.h"
 #include "constants.h"
 #include "ipsum.h"
@@ -22,33 +23,6 @@
 
 using namespace std;
 
-class IPLayer {
-
-	private:
-		map<u_int32_t, route_entry> routingTable;
-		map<u_int32_t, int> fwdTable;
-		vector<char*> myAddreses;
-		queue<string> rcvQueue;
-		LinkLayer* linkLayer;
-
-		void runForwarding();
-		void runRouting();
-		int getFwdInterface(u_int32_t daddr);
-		void handleNewPacket(char* packet, int len);
-		struct iphdr* parseHeader(char* packet);
-		void decrementTTL(char* packet);
-		void deliverLocal(char* packet);
-		struct iphdr* genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr);
-		static void runThread(ipl_thread_pkg pkg);
-
-	public:
-		IPLayer(LinkLayer* linkLayer);
-		int send(char* data, int dataLen, char* destIP);
-		int receive(char* buf, int bufLen);
-		bool hasData();
-		string getData();
-};
-
 IPLayer::IPLayer(LinkLayer* link) {
 	linkLayer = link;
 
@@ -57,11 +31,10 @@ IPLayer::IPLayer(LinkLayer* link) {
 	ipl_thread_pkg* pkg = new ipl_thread_pkg;
 	pkg->ipl = this;
 	pkg->toRun = "forwarding";
-	int err = pthread_create(fwdWorker, NULL, runThread, *pkg);
+	int err = pthread_create(fwdWorker, NULL, runThread, this);
 	if(err != 0) {
 			perror("Threading error:");
 	}
-
 }
 
 static void IPLayer::runThread(ipl_thread_pkg pkg) {

@@ -7,8 +7,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
-#include "constants.h"
 #include "LinkLayer.h"
+#include "constants.h"
 
 using namespace std;
 
@@ -108,7 +108,6 @@ int LinkLayer::createSocket(phy_info phyInfo, struct addrinfo* aiRet, bool bindS
 }
 
 /* This main just for testing */
-/*
 int main(int argc, char ** argv) {
 	int recv_len;
 	char msg[512], reply[512];

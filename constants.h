@@ -27,7 +27,7 @@ typedef struct {
 } route_entry;
 
 typedef struct {
-	IPLayer ipl;
+	IPLayer* ipl;
 	string toRun;
 } ipl_thread_pkg;
 
