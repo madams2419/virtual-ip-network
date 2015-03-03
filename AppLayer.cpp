@@ -1,18 +1,28 @@
-#ifndef IPLAYER_H
-#define IPLAYER_H
-
 #include <vector>
 #include <string>
-#include <stdlib>
-#include <sys/socket>
-#include <arpa/inet.h>
-#include <unistd>
-#include <netdb>
+#include <iostream>
 #include "constants.h"
-
+#include "AppLayer.h"
 
 using namespace std;
 
-AppLayer::AppLayer() {}
+AppLayer::AppLayer() {
 
-#endif
+}
+
+
+void AppLayer::runningApp(const string& command){
+	if(command.compare("send") == 0){
+		cout << "The command is " << command << endl;
+	} else if (command.compare("ipconfig") == 0) {
+		cout << "The command is " << command << endl;
+	} else if (command.compare("routes") == 0) {
+		cout << "The command is " << command << endl;
+	} else if (command.compare("up") == 0) {
+		cout << "The command is " << command << endl;
+	} else if (command.compare("down") == 0) {
+		cout << "The command is " << command << endl;
+	} else {
+		cout << "The command cannot be recognized. Please re-enter" << endl;
+	}
+}

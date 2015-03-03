@@ -4,6 +4,8 @@
 #define MAX_ROUTES 128
 #define MAX_TTL 120
 
+#include <netinet/in.h>
+
 typedef struct {
 	char* ipAddr;
 	char* port;
