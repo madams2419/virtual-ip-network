@@ -1,7 +1,6 @@
 #ifndef IPLAYER_H
 #define IPLAYER_H
 
-<<<<<<< HEAD
 #include <vector>
 #include <string>
 #include <sys/socket.h>
