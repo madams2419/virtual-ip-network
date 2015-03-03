@@ -4,6 +4,8 @@
 #define MAX_ROUTES 128
 #define MAX_TTL 120
 
+#include <netinet/in.h>
+
 typedef struct {
 	in_addr_t ipAddr;
 	char* ipStr;
@@ -19,8 +21,8 @@ typedef struct {
 
 
 typedef struct {
-//	in_addr dest;
-//	in_addr nextHop;
+	in_addr_t dest;
+	in_addr_t nextHop;
 	int cost;
 	int TTL;
 } route_entry;
