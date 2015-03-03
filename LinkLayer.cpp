@@ -1,6 +1,3 @@
-#ifndef LINKLAYER_H
-#define LINKLAYER_H
-
 #include <vector>
 #include <stdio.h>
 #include <string.h>
@@ -13,10 +10,6 @@
 #include "constants.h"
 #include "LinkLayer.h"
 
-#define MAX_MSG_LENGTH (512)
-#define MAX_BACK_LOG (5)
-#define SEND_LENGTH (MAX_MSG_LENGTH*3)
-
 using namespace std;
 
 LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
@@ -24,6 +17,13 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	this->itfs = itfs;
 	localAI = new struct addrinfo;
 	rcvSocket = createSocket(localPhy, localAI, true);
+}
+
+/**
+ * Returns string representation of IP address associated with the specified interface
+ */
+char* LinkLayer::getInterfaceAddr(int itfNum) {
+	return itfs[itfNum].locAddr;
 }
 
 /**
@@ -161,5 +161,3 @@ int main(int argc, char ** argv) {
 		printf("Invalid argument.");
 	}
 }
-*/
-#endif

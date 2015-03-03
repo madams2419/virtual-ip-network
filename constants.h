@@ -5,6 +5,8 @@
 #define MAX_TTL 120
 
 #include <netinet/in.h>
+#include <string>
+#include "IPLayer.h"
 
 typedef struct {
 	char* ipAddr;
@@ -17,7 +19,6 @@ typedef struct {
 	phy_info rmtPhy;
 } itf_info;
 
-
 typedef struct {
 	char* dest;
 	char* nextHop;
@@ -25,5 +26,9 @@ typedef struct {
 	int TTL;
 } route_entry;
 
+typedef struct {
+	IPLayer ipl;
+	string toRun;
+} ipl_thread_pkg;
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef IPLAYER_H
-#define IPLAYER_H
+#ifndef LINKLAYER_H
+#define LINKLAYER_H
 
 #include <vector>
 #include <string>
@@ -26,6 +26,7 @@ class LinkLayer {
 		LinkLayer(phy_info localPhy, vector<itf_info> itfs);
 		int send(char* data, int dataLen, int itfNum);
 		int listen(char* buf, int bufLen);
+		char* getInterfaceAddr(int itfNum);
 };
 
 #endif

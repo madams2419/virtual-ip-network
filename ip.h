@@ -19,7 +19,7 @@
 #ifndef __NETINET_IP_H
 #define __NETINET_IP_H 1
 
-#include <features.h>
+//#include <features.h>
 #include <sys/types.h>
 
 #include <netinet/in.h>
