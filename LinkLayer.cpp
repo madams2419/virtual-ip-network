@@ -85,7 +85,7 @@ int LinkLayer::createSocket(phy_info phyInfo, struct addrinfo *aiRet, bool bindS
 	hints.ai_family = AF_INET; // IPv4
 	hints.ai_socktype = SOCK_DGRAM; // UDP
 
-	if ((rv = getaddrinfo(phyInfo.ipStr, phyInfo.portStr, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(phyInfo.ipAddr, phyInfo.port, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return -1;
 	}
@@ -128,16 +128,14 @@ int main(int argc, char ** argv) {
 	itf_info itf;
 	vector<itf_info> itfs;
 
-	locPhy.ipAddr = inet_addr("127.0.0.1");
-	rmtPhy.ipAddr = inet_addr("127.0.0.1");
+	locPhy.ipAddr = "127.0.0.1";
+	rmtPhy.ipAddr = "127.0.0.1";
 
-	locPhy.port = atoi(argv[1]);
-	locPhy.portStr = argv[1];
-	rmtPhy.port = atoi(argv[2]);
-	rmtPhy.portStr = argv[2];
+	locPhy.port = argv[1];
+	rmtPhy.port = argv[2];
 
-	itf.locAddr = inet_addr("192.168.1.1");
-	itf.rmtAddr = inet_addr("192.168.1.1");
+	itf.locAddr = "192.168.1.1";
+	itf.rmtAddr = "192.168.1.1";
 	itf.rmtPhy = rmtPhy;
 
 	itfs.push_back(itf);
