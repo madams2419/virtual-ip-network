@@ -9,8 +9,10 @@
 
 #include "AppLayer.h"
 
+
 using namespace std;
 
+const string DEFAULT_IP = "127.0.0.1";
 
 int main (int argc, char** argv){
 
@@ -19,18 +21,36 @@ int main (int argc, char** argv){
 	myReader.open(fileName);
 	cout << "The file name is " <<  fileName << endl;
 	string line = "";
+	string fileInfo[128];
 	int count = 0;
 	while(getline(myReader,line)) {
 		char *pch;
 		char *linecopy = new char[line.length() + 1];
 		strcpy(linecopy,line.c_str());
 		pch = strtok(linecopy, ": ");
-
 		while(pch != NULL) {
-			cout << pch << endl;
+			string str = pch;
+			fileInfo[count] = str;
+//			cout << pch << endl;
 			pch = strtok(NULL, " : ");
+			cout << "The string info " << count << " is " << fileInfo[count] << endl; 
+			count++;
 		}
 	}
+
+	if(fileInfo[0].compare("localhost") == 0){
+		fileInfo[0] = DEFAULT_IP;
+	}
+
+	for(int i = 2; i < count; i = i+4){
+		if(fileInfo[i].compare("localhost") == 0){
+			fileInfo[i] = DEFAULT_IP;
+		}
+	}
+
+	phy_info myPhyInfo;
+	myPhyInfo.ipAddr = const_cast<char* >(fileInfo[0].c_str());
+	myPhyInfo.port = const_cast<char* >(fileInfo[1].c_str());
 	string input = "";
 	AppLayer myApp;
 	while(1){
