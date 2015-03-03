@@ -5,22 +5,20 @@
 #define MAX_TTL 120
 
 typedef struct {
-	in_addr_t ipAddr;
-	char* ipStr;
-	uint16_t port;
-	char* portStr;
+	char* ipAddr;
+	char* port;
 } phy_info;
 
 typedef struct {
-	in_addr_t locAddr;
-	in_addr_t rmtAddr;
+	char* locAddr;
+	char* rmtAddr;
 	phy_info rmtPhy;
 } itf_info;
 
 
 typedef struct {
-	in_addr dest;
-	in_addr nextHop;
+	char* dest;
+	char* nextHop;
 	int cost;
 	int TTL;
 } route_entry;
