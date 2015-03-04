@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-#ifndef LINKLAYER_H
-#define LINKLAYER_H
-
 #include <iostream>
 #include <vector>
 #include <stdio.h>
