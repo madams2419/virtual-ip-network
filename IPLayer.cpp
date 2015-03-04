@@ -34,13 +34,12 @@ IPLayer::IPLayer(LinkLayer* link) {
 	popFwdTable();
 
 	// create thread to handle forwarding tasks
-	pthread_t* fwdWorker;
+	pthread_t* fwdWorker = new pthread_t;
 	thread_pkg* pkg = new thread_pkg;
 	pkg->ipl = this;
 	pkg->toRun = "forwarding";
-	int err = pthread_create(fwdWorker, NULL, &runThread, (void*) pkg);
-	if(err != 0) {
-			perror("Threading error:");
+	if(pthread_create(fwdWorker, NULL, &runThread, (void*) pkg) != 0) {
+		perror("Threading error:");
 	}
 
 }
@@ -65,7 +64,6 @@ void IPLayer::runForwarding() {
 
 	while(1) {
 		// get packet
-		cout << "Worker thread listening for data." << endl;
 		rcvLen = linkLayer->listen(buf, sizeof(buf));
 		if (rcvLen < 0) {
 			printf("IP Layer receive error.\n");
@@ -104,12 +102,8 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	hdr = (struct iphdr*) packet; //TODO might want to deal with network ordering issues
 
 	//DEBUG
+	cout << "Received packet..." << endl;
 	printHeader(packet);
-	cout << "Message: " << packet << endl;
-	cout << "Message (hex): " << endl;
-	for (int i = 0; i < len; i++) {
-  		cout << hex << packet[i];
-	}
 
 	// check to make sure receive length equals header total length
 	if (hdr->tot_len != len) {
@@ -188,9 +182,6 @@ void IPLayer::deliverLocal(char* packet) {
 	// copy packet data into string
 	string data(&packet[hswop], dataLen);
 
-	//DEBUG
-	cout << "Got data: " << data << endl;
-
 	// add data buffer to data vector
 	rcvQueue.push(data);
 }
@@ -234,13 +225,8 @@ int IPLayer::send(char* data, int dataLen, char* destIP) {
 	memcpy(&packet[HDR_SIZE], data, dataLen);
 
 	//DEBUG
+	cout << "Sending packet..." << endl;
 	printHeader(packet);
-	cout << "Send message: " << packet << endl;
-	cout << "Send message (hex): " << endl;
-	for (int i = 0; i < packetLen; i++) {
-  		cout << hex << packet[i];
-	}
-	cout << endl;
 
 	// convert packet buffer to network byte order
 	bufSerialize(packet, packetLen);
@@ -249,8 +235,6 @@ int IPLayer::send(char* data, int dataLen, char* destIP) {
 	if((bytesSent = linkLayer->send(packet, packetLen, itfNum)) < 0) {
 		printf("Sending error.\n");
 		return -1;
-	} else {
-		printf("IP packet length = %d\n Sent %d bytes\n", packetLen, bytesSent);
 	}
 
 	return bytesSent;
@@ -322,7 +306,7 @@ void IPLayer::bufSerialize(char* buf, int len) {
 int IPLayer::getFwdInterface(u_int32_t daddr) {
 	// check if network number is equal to the destination of any of the interfaces
 	if (linkLayer->isLocalAddr(daddr)) {
-		printf("Destination address is local addres. Delivering locally.\n");
+		printf("Destination address is local address. Delivering locally.\n");
 		return -1;
 	} if (fwdTable.count(daddr) == 1) { // daddr is in fwd table; return itf value
 		printf("Fwd table entry found. Forwarding on itf: %d\n", fwdTable[daddr]);

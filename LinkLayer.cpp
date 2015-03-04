@@ -21,19 +21,20 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	rcvSocket = createSocket(localPhy, localAI, true);
 
 	cout << "LinkLayer Config" << endl;
-	cout << "========================" << endl;
+	cout << "==============================" << endl;
 	cout << "Local phy address : " << localPhy.ipAddr << endl;
 	cout << "Local phy port    : " << localPhy.port << endl;
 	for(vector<itf_info>::size_type i = 0; i != itfs.size(); i++){
-		cout << "---------------------" << endl;
+		cout << "---------------------------" << endl;
 		cout << "Interface " << i << endl;
-		cout << "---------------------" << endl;
+		cout << "---------------------------" << endl;
 		cout << "Remote phy address : " << itfs[i].rmtPhy.ipAddr << endl;
 		cout << "Remote phy port    : " << itfs[i].rmtPhy.port << endl;
 		cout << "Local vip          : " << itfs[i].locAddr << endl;
 		cout << "Remote vip         : " << itfs[i].rmtAddr << endl;
 		cout << "MTU                : " << itfs[i].mtu << endl;
 	}
+	cout << "==============================" << endl;
 }
 
 /**
@@ -47,10 +48,8 @@ char* LinkLayer::getInterfaceAddr(int itf) {
  * Returns true if the specified address matches a local interface IP address
  */
 bool LinkLayer::isLocalAddr(u_int32_t addr) {
-	cout << "Test address: " << addr << endl;
 	for(int i = 0; i < itfs.size(); i++) {
 		u_int32_t locAddr = inet_addr(getInterfaceAddr(i));
-		cout << "Local address: " << locAddr << endl;
 		if (addr == locAddr) return true;
 	}
 	return false;
@@ -87,6 +86,7 @@ int LinkLayer::listen(char* buf, int bufLen) {
 		perror("Receive error:");
 		return -1;
 	}
+	printf("Recieved %d bytes", bytesRcvd);
 	return bytesRcvd;
 }
 
