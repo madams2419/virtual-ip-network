@@ -27,13 +27,25 @@ void AppLayer::increDesCount(){
 	this->desCount++;
 }
 
-void AppLayer::sendData(string instruction[]){
+void AppLayer::sendData(string instruction[], int counter){
+	bool included = false;
 	cout << "The available destinations are ";
 	for(int i = 0; i < desCount; i++){
 		cout << availDes[i] << " ";
+		if(instruction[1].compare(availDes[i]) == 0){
+			included = true;
+		}
 	}
 	cout << endl;
-	cout << "The destination is " << instruction[1] << " and the message is " << instruction[2] <<endl;
+	if(!included){
+		cout << "The virtual IP is not reachable. Please make sure it is available." << endl;
+		return;
+	}
+	string message = "";
+	for(int i = 2; i < counter; i++){
+		message = message + instruction[i] + " ";
+	}
+	cout << "The destination is " << instruction[1] << " and the message is " << message <<endl;
 }
 
 
@@ -60,7 +72,7 @@ void AppLayer::runningApp(const string& command){
 	cout << endl;
 	if(commandType.compare("send") == 0){
 		cout << "The command is " << commandType << endl;
-		sendData(toDo);
+		sendData(toDo, count);
 	} else if (commandType.compare("ipconfig") == 0) {
 		cout << "The command is " << commandType << endl;
 	} else if (commandType.compare("routes") == 0) {

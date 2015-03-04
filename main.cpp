@@ -33,7 +33,7 @@ int main (int argc, char** argv){
 			fileInfo[count] = str;
 //			cout << pch << endl;
 			pch = strtok(NULL, " : ");
-			cout << "The string info " << count << " is " << fileInfo[count] << endl; 
+//			cout << "The string info " << count << " is " << fileInfo[count] << endl; 
 			count++;
 		}
 	}

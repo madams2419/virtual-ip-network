@@ -10,7 +10,7 @@ class AppLayer {
 
 	private:
 		void start();
-		void sendData(std::string instruction[]);
+		void sendData(std::string instruction[], int count);
 		std::string* availDes;
 		int desCount;
 
