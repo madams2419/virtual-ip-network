@@ -8,9 +8,7 @@
 #include "constants.h"
 #include "LinkLayer.h"
 
-#define MAX_MSG_LEN (512)
 #define HDR_SIZE sizeof(struct iphdr)
-
 
 class IPLayer {
 
@@ -29,8 +27,11 @@ class IPLayer {
 		struct iphdr* parseHeader(char* packet);
 		void decrementTTL(char* packet);
 		void deliverLocal(char* packet);
-		void genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr);
+		void genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr, bool rip);
 		static void *runThread(void* pkg);
+		void bufSerialize(char* buf, int len);
+		void printHeader(char* packet);
+		void forward(char* packet, int len, int itf);
 
 		//DEBUG
 		void popFwdTable();

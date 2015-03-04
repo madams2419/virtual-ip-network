@@ -4,8 +4,10 @@
 #include <string>
 
 #define MAX_ROUTES 128
-#define MAX_TTL 120
+#define MAX_TTL 64
 #define MAX_HOST 128
+#define DEFAULT_MTU 1400
+#define MAX_RCV_LEN 64000
 
 typedef struct {
 	char* ipAddr;
@@ -16,8 +18,8 @@ typedef struct {
 	char* locAddr;
 	char* rmtAddr;
 	phy_info rmtPhy;
+	int mtu;
 } itf_info;
-
 
 typedef struct {
 	char* dest;

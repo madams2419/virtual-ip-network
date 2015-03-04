@@ -51,10 +51,8 @@ int main (int argc, char** argv){
 		newItf.locAddr = const_cast<char* >(fileInfo[i].c_str());
 		i++;
 		newItf.rmtAddr = const_cast<char* >(fileInfo[i].c_str());
-		//myApp.addDes(fileInfo[i]);
-		//cout << "Current the desCount is " << myApp.getDesCount() << " ";
 		i++;
-		//myApp.increDesCount();
+		newItf.mtu = DEFAULT_MTU;
 		nodeItfs.push_back(newItf);
 	}
 
@@ -74,18 +72,3 @@ int main (int argc, char** argv){
 
 	return 0;
 }
-/*
-IPLayer createIPLayer(string config) {
-	char *pch;
-	char *linecopy = new char[config.length() + 1];
-	strcpy(linecopy, config.c_str());
-	pch = strtok(linecopy, ": ");
-
-	while(pch != NULL) {
-		newPS.ip = inet_addr(pch);
-		pch = strtok(NULL, " : ");
-	}
-
-	return 0;
-}
-*/
