@@ -191,10 +191,7 @@ int IPLayer::send(char* data, int dataLen, char* destIP) {
 	saddr = inet_addr(linkLayer->getInterfaceAddr(itfNum));
 
 	// generate new IP header
-	hdr = genHeader(dataLen, saddr, daddr);
-
-	// copy header to packet buffer
-	memcpy(&packet[0], hdr, sizeof(struct iphdr));
+	genHeader(packet, dataLen, saddr, daddr);
 
 	// copy data to packet buffer
 	memcpy(&packet[sizeof(struct iphdr)], data, dataLen);
@@ -222,10 +219,10 @@ int IPLayer::send(char* data, int dataLen, char* destIP) {
 }
 
 /**
- * Returns pointer to newly populated IP header
+ * Inserts header at the beginning of the supplied buffer
  */
-struct iphdr* IPLayer::genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr) {
-	struct iphdr* hdr = new struct iphdr;
+void IPLayer::genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr) {
+	struct iphdr* hdr = (struct iphdr*) buf;
 
 	// pack header
 	hdr->version = 4; // IP version 4
@@ -240,10 +237,8 @@ struct iphdr* IPLayer::genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr) 
 	hdr->saddr = saddr; // source address in network byte order
 	hdr->daddr = daddr; // destination address in network byte order
 
-	// calculate checksum
+	// calculate and add checksum
 	hdr->check = ip_sum((char*) hdr, sizeof(struct iphdr));
-
-	return hdr;
 }
 
 /**

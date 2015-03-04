@@ -29,7 +29,7 @@ class IPLayer {
 		struct iphdr* parseHeader(char* packet);
 		void decrementTTL(char* packet);
 		void deliverLocal(char* packet);
-		struct iphdr* genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr);
+		void genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr);
 		static void *runThread(void* pkg);
 
 		//DEBUG

@@ -39,15 +39,8 @@ int main (int argc, char** argv){
 		}
 	}
 
-	if(fileInfo[0].compare("localhost") == 0){
-		fileInfo[0] = DEFAULT_IP;
-	}
-
 	vector<itf_info> nodeItfs;
 	for(int i = 2; i < count;){
-		if(fileInfo[i].compare("localhost") == 0){
-			fileInfo[i] = DEFAULT_IP;
-		}
 		itf_info newItf;
 		phy_info newPhy;
 		newPhy.ipAddr = const_cast<char* >(fileInfo[i].c_str());
