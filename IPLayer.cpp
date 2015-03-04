@@ -33,8 +33,10 @@ IPLayer::IPLayer(LinkLayer* link) {
 	defaultItf = 0;
 	startTime = clock();
 
-	//DEBUG
-	popFwdTable();
+	// initialize read write locks
+	pthread_rwlock_init(&rtLock, NULL); // routing table lock
+	pthread_rwlock_init(&ftLock, NULL); // forwarding table lock
+	pthread_rwlock_init(&rqLock, NULL); // request queue lock
 
 	// create thread to listen for packets
 	pthread_t* listWorker = new pthread_t;
@@ -168,11 +170,13 @@ void IPLayer::sendRIPUpdates() {
 		if (itf.down) continue;
 
 		// populate array of rip route entries
+		pthread_rwlock_rdlock(&rtLock);
 		rip_entry routes[routingTable.size()];
 		for(int i = 0; i < routingTable.size(); i++) {
 			routes[i].cost = routingTable[i].cost;
 			routes[i].address = routingTable[i].dest;
 		}
+		pthread_rwlock_unlock(&rtLock);
 
 		// make RIP request structure
 		rip_packet* rip = new rip_packet;
@@ -270,8 +274,10 @@ void IPLayer::forward(char* packet, int itf) {
  * Returns the next string in the receive buffer
  */
 string IPLayer::getData() {
+	pthread_rwlock_wrlock(&rqLock);
 	string data = rcvQueue.front();
 	rcvQueue.pop();
+	pthread_rwlock_unlock(&rqLock);
 	return data;
 }
 
@@ -279,7 +285,10 @@ string IPLayer::getData() {
  * Return true if the IP layer has buffered data
  */
 bool IPLayer::hasData() {
-	return (rcvQueue.size() > 0);
+	pthread_rwlock_rdlock(&rqLock);
+	bool hasData = (rcvQueue.size() > 0);
+	pthread_rwlock_unlock(&rqLock);
+	return hasData;
 }
 
 /**
@@ -296,7 +305,9 @@ void IPLayer::deliverLocal(char* packet) {
 	string data(&packet[hswop], dataLen);
 
 	// add data buffer to data vector
+	pthread_rwlock_wrlock(&rqLock);
 	rcvQueue.push(data);
+	pthread_rwlock_unlock(&rqLock);
 }
 
 /**
@@ -318,7 +329,9 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 	if ((itfNum = getFwdInterface(daddr)) < 0) {
 		printf("Source address belongs to host. Delivering locally.\n");
 		string locData(data, dataLen);
+		pthread_rwlock_wrlock(&rqLock);
 		rcvQueue.push(locData);
+		pthread_rwlock_unlock(&rqLock);
 		return 0;
 	}
 
@@ -430,17 +443,18 @@ int IPLayer::getFwdInterface(u_int32_t daddr) {
 	if (linkLayer->isLocalAddr(daddr)) {
 		printf("Destination address is local address. Delivering locally.\n");
 		return -1;
-	} if (fwdTable.count(daddr) == 1) { // daddr is in fwd table; return itf value
-		printf("Fwd table entry found. Forwarding on itf: %d\n", fwdTable[daddr]);
-		return fwdTable[daddr];
-	} else { // daddr is not in fwd table; return default itf
-		printf("Fwd table entry not found. Forwarding on default port.\n");
-		return defaultItf;
 	}
 
-}
+	int ret;
+	pthread_rwlock_rdlock(&ftLock);
+	if (fwdTable.count(daddr) == 1) { // daddr is in fwd table; return itf value
+		printf("Fwd table entry found. Forwarding on itf: %d\n", fwdTable[daddr]);
+		ret = fwdTable[daddr];
+	} else { // daddr is not in fwd table; return default itf
+		printf("Fwd table entry not found. Forwarding on default port.\n");
+		ret = defaultItf;
+	}
+	pthread_rwlock_unlock(&ftLock);
 
-void IPLayer::popFwdTable() {
-	fwdTable[inet_addr("10.116.89.157")] = 0;
-	fwdTable[inet_addr("14.230.5.36")] = 1;
+	return ret;
 }

@@ -20,11 +20,17 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	localAI = new struct addrinfo;
 	rcvSocket = createSocket(localPhy, localAI, true);
 
+	// print link layer configuration
 	cout << "LinkLayer Config" << endl;
 	cout << "==============================" << endl;
 	cout << "Local phy address : " << localPhy.ipAddr << endl;
 	cout << "Local phy port    : " << localPhy.port << endl;
 	for(vector<itf_info>::size_type i = 0; i != itfs.size(); i++){
+		// initialize send socket locks
+		pthread_mutex_t ssLock;
+		ssLocks.push_back(ssLock);
+
+		// print interface info
 		cout << "---------------------------" << endl;
 		cout << "Interface " << i << endl;
 		cout << "---------------------------" << endl;
@@ -50,18 +56,23 @@ void LinkLayer::printInterfaces() {
  * Returns the local IP address associated with the specified interface
  */
 char* LinkLayer::getInterfaceAddr(int itf) {
-	return itfs[itf].locAddr;
+	char* addr = itfs[itf].locAddr;
+	return addr;
 }
 
 /**
  * Returns true if the specified address matches a local interface IP address
  */
 bool LinkLayer::isLocalAddr(u_int32_t addr) {
+	bool ret = false;
 	for(int i = 0; i < itfs.size(); i++) {
 		u_int32_t locAddr = inet_addr(getInterfaceAddr(i));
-		if (addr == locAddr) return true;
+		if (addr == locAddr) {
+			ret = true;
+			break;
+		}
 	}
-	return false;
+	return ret;
 }
 
 /**
@@ -70,7 +81,13 @@ bool LinkLayer::isLocalAddr(u_int32_t addr) {
 int LinkLayer::send(char* data, int dataLen, int itfNum) {
 	int sendSocket, bytesSent;
 	struct addrinfo *aiDest = new addrinfo;
-	sendSocket = createSocket(itfs[itfNum].rmtPhy, aiDest, false);
+
+	// get remote phy info
+	phy_info pinfo = itfs[itfNum].rmtPhy;
+
+	// lock socket mutex
+	pthread_mutex_lock(&ssLocks[itfNum]);
+	sendSocket = createSocket(pinfo, aiDest, false);
 
 	if ((bytesSent = sendto(sendSocket, data, dataLen, 0, aiDest->ai_addr, aiDest->ai_addrlen)) == -1) {
 		perror("Send error:");
@@ -82,6 +99,9 @@ int LinkLayer::send(char* data, int dataLen, int itfNum) {
 	printf("Sent %d bytes over interface %d\n", bytesSent, itfNum);
 	close(sendSocket);
 
+	// unlock socket mutex
+	pthread_mutex_unlock(&ssLocks[itfNum]);
+
 	return bytesSent;
 }
 
@@ -91,10 +111,12 @@ int LinkLayer::send(char* data, int dataLen, int itfNum) {
  */
 int LinkLayer::listen(char* buf, int bufLen) {
 	int bytesRcvd;
+	pthread_mutex_lock(&rsLock);
 	if ((bytesRcvd = recvfrom(rcvSocket, buf, bufLen, 0, NULL, NULL)) == -1) {
 		perror("Receive error:");
 		return -1;
 	}
+	pthread_mutex_unlock(&rsLock);
 	printf("Recieved %d bytes", bytesRcvd);
 	return bytesRcvd;
 }

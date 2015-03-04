@@ -5,6 +5,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include "constants.h"
 
 class LinkLayer {
@@ -14,8 +15,9 @@ class LinkLayer {
 		std::vector<itf_info> itfs;
 		struct addrinfo* localAI;
 		int rcvSocket;
-		std::vector<int> sendSockets;
-		std::vector< std::vector<char> > packetQueue;
+		std::vector<pthread_mutex_t> ssLocks;
+		pthread_mutex_t rsLock;
+
 		void start();
 		int createSocket(phy_info phyInfo, struct addrinfo* ai, bool bindSock);
 

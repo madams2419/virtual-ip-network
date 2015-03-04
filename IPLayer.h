@@ -6,6 +6,7 @@
 #include <queue>
 #include <string>
 #include <ctime>
+#include <pthread.h>
 #include "constants.h"
 #include "LinkLayer.h"
 
@@ -16,9 +17,9 @@ class IPLayer {
 	private:
 		std::map<u_int32_t, route_entry> routingTable;
 		std::map<u_int32_t, int> fwdTable;
-		std::vector<char*> myAddreses;
 		std::queue<std::string> rcvQueue;
 		std::vector<itf_info>* interfaces;
+		pthread_rwlock_t rtLock, ftLock, rqLock;
 		LinkLayer* linkLayer;
 		int defaultItf;
 		clock_t startTime;
