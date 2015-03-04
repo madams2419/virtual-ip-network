@@ -17,10 +17,11 @@ const string DEFAULT_IP = "127.0.0.1";
 
 int main (int argc, char** argv){
 
+	// parse input arguments
 	ifstream myReader;
 	char* fileName = argv[1];
 	myReader.open(fileName);
-	cout << "The file name is " <<  fileName << endl;
+	//cout << "The file name is " <<  fileName << endl;
 	string line = "";
 	string fileInfo[MAX_HOST];
 	int count = 0;
@@ -32,22 +33,14 @@ int main (int argc, char** argv){
 		while(pch != NULL) {
 			string str = pch;
 			fileInfo[count] = str;
-//			cout << pch << endl;
 			pch = strtok(NULL, " : ");
-//			cout << "The string info " << count << " is " << fileInfo[count] << endl; 
 			count++;
 		}
 	}
 
-	if(fileInfo[0].compare("localhost") == 0){
-		fileInfo[0] = DEFAULT_IP;
-	}
-
+	// populate interface vector
 	vector<itf_info> nodeItfs;
 	for(int i = 2; i < count;){
-		if(fileInfo[i].compare("localhost") == 0){
-			fileInfo[i] = DEFAULT_IP;
-		}
 		itf_info newItf;
 		phy_info newPhy;
 		newPhy.ipAddr = const_cast<char* >(fileInfo[i].c_str());
@@ -58,41 +51,23 @@ int main (int argc, char** argv){
 		newItf.locAddr = const_cast<char* >(fileInfo[i].c_str());
 		i++;
 		newItf.rmtAddr = const_cast<char* >(fileInfo[i].c_str());
-		//myApp.addDes(fileInfo[i]);
-		//cout << "Current the desCount is " << myApp.getDesCount() << " ";
 		i++;
-		//myApp.increDesCount();
+		newItf.mtu = DEFAULT_MTU;
 		nodeItfs.push_back(newItf);
 	}
 
+	// populate local phy info struct
 	phy_info myPhyInfo;
 	myPhyInfo.ipAddr = const_cast<char* >(fileInfo[0].c_str());
 	myPhyInfo.port = const_cast<char* >(fileInfo[1].c_str());
 
+	// create link, IP, and application layers
 	LinkLayer* linkLayer = new LinkLayer(myPhyInfo, nodeItfs);
 	IPLayer* ipLayer = new IPLayer(linkLayer);
 	AppLayer* myApp = new AppLayer(ipLayer);
 
-	string input = "";
-	while(1){
-		getline(cin, input);
-		myApp->runningApp(input);
-	}
+	// run app layer
+	myApp->run();
 
 	return 0;
 }
-/*
-IPLayer createIPLayer(string config) {
-	char *pch;
-	char *linecopy = new char[config.length() + 1];
-	strcpy(linecopy, config.c_str());
-	pch = strtok(linecopy, ": ");
-
-	while(pch != NULL) {
-		newPS.ip = inet_addr(pch);
-		pch = strtok(NULL, " : ");
-	}
-
-	return 0;
-}
-*/

@@ -12,10 +12,6 @@
 #include "constants.h"
 #include "LinkLayer.h"
 
-#define MAX_MSG_LENGTH (512)
-#define MAX_BACK_LOG (5)
-#define SEND_LENGTH (MAX_MSG_LENGTH*3)
-
 using namespace std;
 
 LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
@@ -23,16 +19,40 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	this->itfs = itfs;
 	localAI = new struct addrinfo;
 	rcvSocket = createSocket(localPhy, localAI, true);
-	cout << "In LinkLayer: "<< endl;
-	cout << "The localPhy info: localhost is " << localPhy.ipAddr << " port is " << localPhy.port << endl;
+
+	cout << "LinkLayer Config" << endl;
+	cout << "==============================" << endl;
+	cout << "Local phy address : " << localPhy.ipAddr << endl;
+	cout << "Local phy port    : " << localPhy.port << endl;
 	for(vector<itf_info>::size_type i = 0; i != itfs.size(); i++){
-		cout << "In the " << i << "th itf: " << " Remote phy: address is " << itfs[i].rmtPhy.ipAddr << " port is " << itfs[i].rmtPhy.port << endl;
-		cout << "                 locAddr is " << itfs[i].locAddr << ", rmtAddr is " << itfs[i].rmtAddr << endl;
+		cout << "---------------------------" << endl;
+		cout << "Interface " << i << endl;
+		cout << "---------------------------" << endl;
+		cout << "Remote phy address : " << itfs[i].rmtPhy.ipAddr << endl;
+		cout << "Remote phy port    : " << itfs[i].rmtPhy.port << endl;
+		cout << "Local vip          : " << itfs[i].locAddr << endl;
+		cout << "Remote vip         : " << itfs[i].rmtAddr << endl;
+		cout << "MTU                : " << itfs[i].mtu << endl;
 	}
+	cout << "==============================" << endl;
 }
 
+/**
+ * Returns the local IP address associated with the specified interface
+ */
 char* LinkLayer::getInterfaceAddr(int itf) {
 	return itfs[itf].locAddr;
+}
+
+/**
+ * Returns true if the specified address matches a local interface IP address
+ */
+bool LinkLayer::isLocalAddr(u_int32_t addr) {
+	for(int i = 0; i < itfs.size(); i++) {
+		u_int32_t locAddr = inet_addr(getInterfaceAddr(i));
+		if (addr == locAddr) return true;
+	}
+	return false;
 }
 
 /**
@@ -56,12 +76,17 @@ int LinkLayer::send(char* data, int dataLen, int itfNum) {
 	return bytesSent;
 }
 
+/**
+ * Listen on UDP socket and copy data received to specified buffer
+ * Return number of bytes received
+ */
 int LinkLayer::listen(char* buf, int bufLen) {
 	int bytesRcvd;
-	if ((bytesRcvd = recvfrom(rcvSocket, buf, bufLen-1 , 0, NULL, NULL)) == -1) {
+	if ((bytesRcvd = recvfrom(rcvSocket, buf, bufLen, 0, NULL, NULL)) == -1) {
 		perror("Receive error:");
 		return -1;
 	}
+	printf("Recieved %d bytes", bytesRcvd);
 	return bytesRcvd;
 }
 
@@ -115,59 +140,3 @@ int LinkLayer::createSocket(phy_info phyInfo, struct addrinfo* aiRet, bool bindS
 
 	return sockfd;
 }
-
-/* This main just for testing */
-/*
-int main(int argc, char ** argv) {
-	int recv_len;
-	char msg[512], reply[512];
-
-	phy_info locPhy, rmtPhy;
-	itf_info itf;
-	vector<itf_info> itfs;
-
-	locPhy.ipAddr = "127.0.0.1";
-	rmtPhy.ipAddr = "127.0.0.1";
-
-	locPhy.port = argv[2];
-	rmtPhy.port = argv[3];
-
-	itf.locAddr = "192.168.1.1";
-	itf.rmtAddr = "192.168.1.1";
-	itf.rmtPhy = rmtPhy;
-
-	itfs.push_back(itf);
-
-	LinkLayer* ll = new LinkLayer(locPhy, itfs);
-
-	if (argv[1][0] == 'l') { // node is listener
-
-		while (1) {
-			perror("Listening for packets:\n");
-			recv_len = ll->listen(reply, 512);
-			if (recv_len < 0) {
-				perror("Recv error:");
-				return 1;
-			}
-			reply[recv_len] = 0;
-			printf("Receive message:\n%s\n", reply);
-			memset(reply, 0, sizeof(reply));
-		}
-
-	} else if (argv[1][0] == 's') { // node is sender
-
-		while (1) {
-			fflush(stdin);
-			printf("Enter message: \n");
-			gets(msg);
-			if (ll->send(msg, 512, 0) < 0) {
-				perror("Send error:");
-				return 1;
-			}
-		}
-
-	} else { // invalid argument
-		printf("Invalid argument.");
-	}
-}
-*/

@@ -10,15 +10,18 @@
 class AppLayer {
 
 	private:
+		IPLayer* ipLayer;
+
 		void start();
 		void sendData(std::string instruction[], int count);
-		std::string* availDes;
-		int desCount;
-		IPLayer* ipLayer;
+		void getIPData();
+		void getUserCommands();
 
 	public:
 		AppLayer(IPLayer* ipLayer);
-		void runningApp(const std::string& command);
+		void run();
+		static void *runListener(void* apl);
+		void processCommand(const std::string& command);
 		std::string* getAvailDes();
 		int getDesCount();
 		void increDesCount();
