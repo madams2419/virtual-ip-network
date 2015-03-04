@@ -18,7 +18,7 @@ AppLayer::AppLayer(IPLayer* ipLayer) {
 void AppLayer::run() {
 	// spawn worker thread to listen for messages
 	pthread_t* rcvWorker = new pthread_t;
-	if (pthread_create(rcvWorker, NULL, &runListener, (void*) this) != 0) {
+	if (pthread_create(rcvWorker, NULL, runListener, (void*) this) != 0) {
 		perror("Threading error.");
 	}
 
@@ -32,6 +32,7 @@ void AppLayer::run() {
 void *AppLayer::runListener(void* apl) {
 	AppLayer* app = (AppLayer*) apl;
 	app->getIPData();
+	return NULL;
 }
 
 /**

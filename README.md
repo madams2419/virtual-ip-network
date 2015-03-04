@@ -1,8 +1,2 @@
-# virtual-ip-network
-
-
-To compile & run main.cpp:
-
-g++ main.cpp AppLayer.cpp LinkLayer.cpp -o try
-./try node_b.txt
-
+Name: Michael Adams NetID: mba13
+Name: Yancheng Zeng NetID: yz203
