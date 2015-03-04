@@ -21,7 +21,7 @@ int main (int argc, char** argv){
 	myReader.open(fileName);
 	cout << "The file name is " <<  fileName << endl;
 	string line = "";
-	string fileInfo[128];
+	string fileInfo[MAX_HOST];
 	int count = 0;
 	while(getline(myReader,line)) {
 		char *pch;
@@ -43,7 +43,7 @@ int main (int argc, char** argv){
 	}
 
 	vector<itf_info> nodeItfs;
-
+	AppLayer myApp;
 	for(int i = 2; i < count;){
 		if(fileInfo[i].compare("localhost") == 0){
 			fileInfo[i] = DEFAULT_IP;
@@ -58,7 +58,10 @@ int main (int argc, char** argv){
 		newItf.locAddr = const_cast<char* >(fileInfo[i].c_str());
 		i++;
 		newItf.rmtAddr = const_cast<char* >(fileInfo[i].c_str());
+		myApp.addDes(fileInfo[i]);
+		//cout << "Current the desCount is " << myApp.getDesCount() << " ";
 		i++;
+		myApp.increDesCount();
 		nodeItfs.push_back(newItf);
 	}
 
@@ -69,9 +72,8 @@ int main (int argc, char** argv){
 	LinkLayer nodeLink(myPhyInfo, nodeItfs);
 
 	string input = "";
-	AppLayer myApp;
 	while(1){
-		cin >> input;
+		getline(cin, input);
 		myApp.runningApp(input);
 	}
 
