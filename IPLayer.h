@@ -20,6 +20,7 @@ class IPLayer {
 		std::vector<char*> myAddreses;
 		std::queue<std::string> rcvQueue;
 		LinkLayer* linkLayer;
+		int defaultItf;
 
 		void runForwarding();
 		void runRouting();
@@ -30,6 +31,9 @@ class IPLayer {
 		void deliverLocal(char* packet);
 		struct iphdr* genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr);
 		static void *runThread(void* pkg);
+
+		//DEBUG
+		void popFwdTable();
 
 	public:
 		IPLayer(LinkLayer* linkLayer);

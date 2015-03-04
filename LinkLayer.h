@@ -18,6 +18,7 @@ class LinkLayer {
 		std::vector< std::vector<char> > packetQueue;
 		void start();
 		int createSocket(phy_info phyInfo, struct addrinfo* ai, bool bindSock);
+
 	public:
 		LinkLayer(phy_info localPhy, std::vector<itf_info> itfs);
 		int send(char* data, int dataLen, int itfNum);

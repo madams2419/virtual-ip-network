@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 #include <queue>
 #include <map>
@@ -27,6 +28,10 @@ typedef struct {
 
 IPLayer::IPLayer(LinkLayer* link) {
 	linkLayer = link;
+	defaultItf = 0;
+
+	//DEBUG
+	popFwdTable();
 
 	// create thread to handle forwarding tasks
 	pthread_t* fwdWorker;
@@ -53,6 +58,7 @@ void IPLayer::runForwarding() {
 
 	while(1) {
 		// get packet
+		cout << "Worker thread listening for data." << endl;
 		rcvLen = linkLayer->listen(buf, MAX_MSG_LEN);
 		if (rcvLen < 0) {
 			printf("IP Layer receive error.");
@@ -77,7 +83,16 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	struct iphdr* hdr;
 
 	// parse header
-	hdr = (struct iphdr*) &packet; //TODO might want to deal with network ordering issues
+	hdr = (struct iphdr*) packet; //TODO might want to deal with network ordering issues
+
+	//DEBUG
+	cout << "Header length: " << hdr->tot_len << endl;
+	cout << "Received Length: " << len << endl;
+	cout << "Message: " << packet << endl;
+	cout << "Send message (hex): " << endl;
+	for (int i = 0; i < len; i++) {
+  		cout << hex << packet[i];
+	}
 
 	// check to make sure receive length equals header total length
 	if (hdr->tot_len != len) {
@@ -86,6 +101,8 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	}
 
 	// verfiy checksum
+	u_int16_t rcvCheck = hdr->check;
+	hdr->check = 0;
 	if (hdr->check != ip_sum(packet, sizeof(struct iphdr))) {
 		printf("Invalid checksum, discarding packet.");
 		return;
@@ -142,6 +159,9 @@ void IPLayer::deliverLocal(char* packet) {
 	// copy data into string
 	string data (packet, HDR_SIZE, dataLen);
 
+	//DEBUG
+	cout << "Got data: " << data << endl;
+
 	// add data buffer to data vector
 	rcvQueue.push(data);
 }
@@ -178,6 +198,17 @@ int IPLayer::send(char* data, int dataLen, char* destIP) {
 
 	// copy data to packet buffer
 	memcpy(&packet[sizeof(struct iphdr)], data, dataLen);
+
+	struct iphdr* test = (struct iphdr*) packet;
+	cout << "Test header length: " << test->tot_len << endl;
+
+	//DEBUG
+	cout << "Send message: " << packet << endl;
+	cout << "Send message (hex): " << endl;
+	for (int i = 0; i < packetLen; i++) {
+  		cout << hex << packet[i];
+	}
+	cout << endl;
 
 	// send packet via link layer
 	if((bytesSent = linkLayer->send(packet, packetLen, itfNum)) < 0) {
@@ -222,12 +253,16 @@ struct iphdr* IPLayer::genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr) 
 int IPLayer::getFwdInterface(u_int32_t daddr) {
 	// check if network number is equal to the destination of any of the interfaces
 
-	// check if network num is in forwarding table
-	int itfNum = fwdTable[daddr];
+	if(fwdTable.count(daddr) == 1) { // daddr is in fwd table; return itf value
+		printf("Fwd table entry found. Forwarding on itf: %d", fwdTable[daddr]);
+		return fwdTable[daddr];
+	} else { // daddr is not in fwd table; return default itf
+		return defaultItf;
+	}
 
-	// return default interface if no matches found
-
-	return itfNum;
 }
 
-
+void IPLayer::popFwdTable() {
+	fwdTable[inet_addr("10.116.89.157")] = 0;
+	fwdTable[inet_addr("14.230.5.36")] = 1;
+}

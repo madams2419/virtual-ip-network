@@ -5,6 +5,7 @@
 
 #define MAX_ROUTES 128
 #define MAX_TTL 120
+#define MAX_HOST 128
 
 typedef struct {
 	char* ipAddr;
