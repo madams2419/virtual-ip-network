@@ -11,6 +11,7 @@
 #define MAX_MSG_LEN (512)
 #define HDR_SIZE sizeof(struct iphdr)
 
+
 class IPLayer {
 
 	private:
@@ -28,7 +29,7 @@ class IPLayer {
 		void decrementTTL(char* packet);
 		void deliverLocal(char* packet);
 		struct iphdr* genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr);
-		static void runThread(IPLayer* pkg);
+		static void *runThread(void* pkg);
 
 	public:
 		IPLayer(LinkLayer* linkLayer);

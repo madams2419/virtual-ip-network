@@ -20,23 +20,31 @@
 
 using namespace std;
 
+typedef struct {
+	IPLayer* ipl;
+	string toRun;
+} thread_pkg;
+
 IPLayer::IPLayer(LinkLayer* link) {
 	linkLayer = link;
 
 	// create thread to handle forwarding tasks
-	//pthread_t* fwdWorker;
-	//ipl_thread_pkg* pkg = new ipl_thread_pkg;
-	//pkg->ipl = this;
-	//pkg->toRun = "forwarding";
-	//int err = pthread_create(fwdWorker, NULL, runThread, *pkg);
-	//if(err != 0) {
-			//perror("Threading error:");
-	//}
+	pthread_t* fwdWorker;
+	thread_pkg* pkg = new thread_pkg;
+	pkg->ipl = this;
+	pkg->toRun = "forwarding";
+	int err = pthread_create(fwdWorker, NULL, &runThread, (void*) pkg);
+	if(err != 0) {
+			perror("Threading error:");
+	}
 
 }
 
-void IPLayer::runThread(IPLayer* pkg) {
-	pkg->runForwarding();
+void *IPLayer::runThread(void* pkg) {
+	thread_pkg* tp = (thread_pkg*) pkg;
+	IPLayer* ipl = tp->ipl;
+	string toRun = tp->toRun;
+	ipl->runForwarding();
 }
 
 void IPLayer::runForwarding() {
