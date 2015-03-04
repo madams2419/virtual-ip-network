@@ -38,6 +38,15 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 }
 
 /**
+ * Print interfaces
+ */
+void LinkLayer::printInterfaces() {
+	for(int i = 0; i < itfs.size(); i++){
+		printf("%d\t%s\t%s\n", i+1, itfs[i].locAddr, (itfs[i].down) ? "down" : "up");
+	}
+}
+
+/**
  * Returns the local IP address associated with the specified interface
  */
 char* LinkLayer::getInterfaceAddr(int itf) {

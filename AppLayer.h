@@ -16,6 +16,11 @@ class AppLayer {
 		void sendData(std::string instruction[], int count);
 		void getIPData();
 		void getUserCommands();
+		void printInterfaces();
+		void printRoutes();
+		void activateInterface(std::string itf);
+		void deactivateInterface(std::string itf);
+
 
 	public:
 		AppLayer(IPLayer* ipLayer);

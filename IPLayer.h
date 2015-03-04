@@ -48,6 +48,10 @@ class IPLayer {
 		int receive(char* buf, int bufLen);
 		bool hasData();
 		std::string getData();
+		void printInterfaces();
+		void printRoutes();
+		void activateInterface(int itf);
+		void deactivateInterface(int itf);
 };
 
 #endif

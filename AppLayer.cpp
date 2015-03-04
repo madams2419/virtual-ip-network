@@ -2,6 +2,7 @@
 #include <cstring>
 #include <iostream>
 #include <stdio.h>
+#include <stdlib.h>
 #include "constants.h"
 #include "AppLayer.h"
 
@@ -62,16 +63,49 @@ void AppLayer::getUserCommands() {
 }
 
 /**
- * Send data via IPLayer
+ * Send data via IP Layer
  */
 void AppLayer::sendData(string instruction[], int counter){
 	string message = "";
 	for(int i = 2; i < counter; i++){
-		message = message + instruction[i] + " ";
+		if(i == counter - 1)
+			message = message + instruction[i];
+		else
+			message = message + instruction[i] + " ";
 	}
 	cout << "The destination is " << instruction[1] << " and the message is " << message << endl;
 
 	ipLayer->send(const_cast<char* >(message.c_str()), message.length(), const_cast<char* >(instruction[1].c_str()));
+}
+
+/**
+ * Print node interfaces
+ */
+void AppLayer::printInterfaces() {
+	ipLayer->printInterfaces();
+}
+
+/**
+ * Print node routes
+ */
+void AppLayer::printRoutes() {
+	ipLayer->printRoutes();
+}
+
+/**
+ * Activate specified interface
+ */
+void AppLayer::activateInterface(string itf) {
+	int itfNum = atoi(itf.c_str()) - 1;
+	ipLayer->activateInterface(itfNum);
+}
+
+/**
+ * Deactivate specified interface
+ */
+void AppLayer::deactivateInterface(string itf) {
+	int itfNum = atoi(itf.c_str()) - 1;
+	ipLayer->deactivateInterface(itfNum);
 }
 
 /**
@@ -98,17 +132,16 @@ void AppLayer::processCommand(const string& command){
 	string commandType = toDo[0];
 
 	if(commandType.compare("send") == 0){
-		cout << "The command is " << commandType << endl;
 		sendData(toDo, count);
-	} else if (commandType.compare("ipconfig") == 0) {
-		cout << "The command is " << commandType << endl;
-	} else if (commandType.compare("routes") == 0) {
-		cout << "The command is " << commandType << endl;
+	} else if (commandType.compare("ifconfig") == 0) {
+		printInterfaces();
+	} else if (commandType.compare("route") == 0) {
+		printRoutes();
 	} else if (commandType.compare("up") == 0) {
-		cout << "The command is " << commandType << endl;
+		activateInterface(toDo[1]);
 	} else if (commandType.compare("down") == 0) {
-		cout << "The command is " << commandType << endl;
+		deactivateInterface(toDo[1]);
 	} else {
-		cout << "The command is " << commandType << " which cannot be recognized. Please re-enter" << endl;
+		cout << "The command is " << commandType << " which cannot be recognized. Please re-enter:" << endl;
 	}
 }

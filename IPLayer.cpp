@@ -57,6 +57,44 @@ IPLayer::IPLayer(LinkLayer* link) {
 }
 
 /**
+ * Print interfaces
+ */
+void IPLayer::printInterfaces() {
+	linkLayer->printInterfaces();
+}
+
+/**
+ * Print routes
+ */
+void IPLayer::printRoutes() {
+
+}
+
+/**
+ * Activate interface
+ */
+void IPLayer::activateInterface(int itf) {
+	if (itf >= interfaces->size()) {
+		printf("Interface %d not found.\n", itf);
+	} else {
+		interfaces->at(itf).down = false;
+		printf("Interface %d up.\n", itf);
+	}
+}
+
+/**
+ * Deactivate interface
+ */
+void IPLayer::deactivateInterface(int itf) {
+	if (itf >= interfaces->size()) {
+		printf("Interface %d not found.\n", itf);
+	} else {
+		interfaces->at(itf).down = true;
+		printf("Interface %d down.\n", itf);
+	}
+}
+
+/**
  * Static worker thread dispatch point
  */
 void *IPLayer::runThread(void* pkg) {

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <stdint.h>
+#include <ctime>
 
 #define MAX_ROUTES 128
 #define MAX_TTL 64
@@ -29,6 +30,7 @@ typedef struct {
 	uint32_t nextHop;
 	int cost;
 	int TTL;
+	clock_t lastUpdate;
 } route_entry;
 
 typedef struct {

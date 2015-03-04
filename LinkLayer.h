@@ -28,6 +28,7 @@ class LinkLayer {
 		int getMTU(int itfNum) {return itfs[itfNum].mtu;};
 		void setMTU(int itfNum, int mtu) {itfs[itfNum].mtu = mtu;};
 		std::vector<itf_info>* getInterfaces() {return &itfs;};
+		void printInterfaces();
 };
 
 #endif
