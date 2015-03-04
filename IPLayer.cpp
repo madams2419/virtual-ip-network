@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
+#include <ctime>
 
 #include "LinkLayer.h"
 #include "constants.h"
@@ -28,17 +29,28 @@ typedef struct {
 
 IPLayer::IPLayer(LinkLayer* link) {
 	linkLayer = link;
+	interfaces = linkLayer->getInterfaces();
 	defaultItf = 0;
+	startTime = clock();
 
 	//DEBUG
 	popFwdTable();
 
-	// create thread to handle forwarding tasks
-	pthread_t* fwdWorker = new pthread_t;
-	thread_pkg* pkg = new thread_pkg;
-	pkg->ipl = this;
-	pkg->toRun = "forwarding";
-	if(pthread_create(fwdWorker, NULL, &runThread, (void*) pkg) != 0) {
+	// create thread to listen for packets
+	pthread_t* listWorker = new pthread_t;
+	thread_pkg* lpkg = new thread_pkg;
+	lpkg->ipl = this;
+	lpkg->toRun = "listening";
+	if(pthread_create(listWorker, NULL, &runThread, (void*) lpkg) != 0) {
+		perror("Threading error:");
+	}
+
+	// create thread to send RIP updates
+	pthread_t* ripWorker = new pthread_t;
+	thread_pkg* rpkg = new thread_pkg;
+	rpkg->ipl = this;
+	rpkg->toRun = "rip_updating";
+	if(pthread_create(ripWorker, NULL, &runThread, (void*) rpkg) != 0) {
 		perror("Threading error:");
 	}
 
@@ -51,18 +63,24 @@ void *IPLayer::runThread(void* pkg) {
 	thread_pkg* tp = (thread_pkg*) pkg;
 	IPLayer* ipl = tp->ipl;
 	string toRun = tp->toRun;
-	ipl->runForwarding();
+
+	if(toRun.compare("listening"))
+		ipl->runListening();
+	else if (toRun.compare("rip_updating"))
+		ipl->runRouting();
+	else
+		cout << "Invalid toRun command." << endl;
 }
 
 /**
  * Loops continuously listening for packets
  * Dispatches a new worker thread to handle packets when received
  */
-void IPLayer::runForwarding() {
+void IPLayer::runListening() {
 	int rcvLen;
 	char buf[MAX_RCV_LEN];
 
-	while(1) {
+	while (1) {
 		// get packet
 		rcvLen = linkLayer->listen(buf, sizeof(buf));
 		if (rcvLen < 0) {
@@ -84,8 +102,51 @@ void IPLayer::runForwarding() {
 	}
 }
 
+/**
+ * Loops continuously sending RIP updates at regular intervals on all active interfaces
+ */
 void IPLayer::runRouting() {
+	clock_t start = clock();
+	while (1) {
+		clock_t end  = clock();
+		double split = (end - start) / (double) CLOCKS_PER_SEC;
+		if (split >= RIP_UPDATE_INT) {
+			// send RIP updates
+			sendRIPUpdates();
+			// reset start clock
+			start = clock();
+		}
+	}
 }
+
+/**
+ * Sends RIP update to all active interfaces
+ */
+void IPLayer::sendRIPUpdates() {
+	for (int j = 0; j < interfaces->size(); j++) {
+		itf_info itf = interfaces->at(j);
+
+		// continue if interface is down
+		if (itf.down) continue;
+
+		// populate array of rip route entries
+		rip_entry routes[routingTable.size()];
+		for(int i = 0; i < routingTable.size(); i++) {
+			routes[i].cost = routingTable[i].cost;
+			routes[i].address = routingTable[i].dest;
+		}
+
+		// make RIP request structure
+		rip_packet* rip = new rip_packet;
+		rip->command = 2; // response command
+		rip->num_entries = sizeof(routes); // size of routing table
+		rip->entries = routes; // array of known routes
+
+		// send RIP packet
+		send((char*) rip, sizeof(rip_packet), itf.rmtAddr, true);
+	}
+}
+
 
 /**
  * Handles new packets by forwarding or delivering them locally
@@ -99,7 +160,7 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	bufSerialize(packet, len);
 
 	// parse header
-	hdr = (struct iphdr*) packet; //TODO might want to deal with network ordering issues
+	hdr = (struct iphdr*) packet;
 
 	//DEBUG
 	cout << "Received packet..." << endl;
@@ -111,7 +172,7 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 		return;
 	}
 
-	// verfiy checksum
+	// verify checksum
 	u_int16_t rcvCheck = hdr->check;
 	hdr->check = 0;
 	if (rcvCheck != ip_sum(packet, HDR_SIZE)) {
@@ -119,28 +180,42 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 		return;
 	}
 
+	// forward, delivery locally, or handle RIP
+	if ((fwdItf = getFwdInterface(hdr->daddr)) == -1) {
+		if (hdr->protocol == 200)
+			handleRIPPacket(packet);
+		else
+			deliverLocal(packet);
+	} else {
+		forward(packet, fwdItf);
+	}
+
+}
+
+/**
+ * Processes RIP packet
+ */
+void IPLayer::handleRIPPacket(char* packet) {
+	cout << "GOT RIP PACKET!!!" << endl;
+}
+
+/**
+ * Forwards packet on specified interface. Packet must be host order.
+ */
+void IPLayer::forward(char* packet, int itf) {
+	struct iphdr* hdr = (struct iphdr*) packet;
+	int len = hdr->tot_len;
+
 	// decrement ttl or return if zero
 	if (hdr->ttl == 0) {
 		printf("TTL = 0, discarding packet.\n");
 		return;
 	} else { // decrement ttl and recalculate checksum
 		hdr->ttl--;
+		hdr->check = 0;
 		hdr->check = ip_sum(packet, HDR_SIZE);
 	}
 
-	// forward or deliver locally
-	if ((fwdItf = getFwdInterface(hdr->daddr)) == -1) {
-		deliverLocal(packet);
-	} else {
-		forward(packet, len, fwdItf);
-	}
-
-}
-
-/**
- * Forwards packet on specified interface. Packet must be host order.
- */
-void IPLayer::forward(char* packet, int len, int itf) {
 	// convert packet to network byte order
 	bufSerialize(packet, len);
 
@@ -187,20 +262,29 @@ void IPLayer::deliverLocal(char* packet) {
 }
 
 /**
- * Encapsulates data in IP header and sends via link layer
+ * Send generic data (public send function)
  */
 int IPLayer::send(char* data, int dataLen, char* destIP) {
+	send(data, dataLen, destIP, false);
+}
+
+/**
+ * Encapsulates RIP packet or generic data in IP header and sends via link layer
+ */
+int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 	int bytesSent, itfNum;
 	u_int32_t daddr, saddr;
 	struct iphdr* hdr;
 
 	// get LinkLayer interface to send packet over
 	if ((itfNum = getFwdInterface(daddr)) < 0) {
-		printf("Source address belongs to host. Aborting send.\n");
-		return -1;
+		printf("Source address belongs to host. Delivering locally.\n");
+		string locData(data, dataLen);
+		rcvQueue.push(locData);
+		return 0;
 	}
 
-	// fragement if data length is greater than interface mtu
+	// fragment if data length is greater than interface mtu
 	int packetLen = dataLen + HDR_SIZE;
 	int mtu = linkLayer->getMTU(itfNum);
 	if (packetLen > mtu) {
@@ -219,7 +303,7 @@ int IPLayer::send(char* data, int dataLen, char* destIP) {
 	saddr = inet_addr(linkLayer->getInterfaceAddr(itfNum));
 
 	// generate new data IP header
-	genHeader(packet, dataLen, saddr, daddr, false);
+	genHeader(packet, dataLen, saddr, daddr, rip);
 
 	// copy data to packet buffer
 	memcpy(&packet[HDR_SIZE], data, dataLen);

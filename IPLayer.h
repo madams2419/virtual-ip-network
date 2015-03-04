@@ -5,6 +5,7 @@
 #include <vector>
 #include <queue>
 #include <string>
+#include <ctime>
 #include "constants.h"
 #include "LinkLayer.h"
 
@@ -17,10 +18,12 @@ class IPLayer {
 		std::map<u_int32_t, int> fwdTable;
 		std::vector<char*> myAddreses;
 		std::queue<std::string> rcvQueue;
+		std::vector<itf_info>* interfaces;
 		LinkLayer* linkLayer;
 		int defaultItf;
+		clock_t startTime;
 
-		void runForwarding();
+		void runListening();
 		void runRouting();
 		int getFwdInterface(u_int32_t daddr);
 		void handleNewPacket(char* packet, int len);
@@ -31,7 +34,10 @@ class IPLayer {
 		static void *runThread(void* pkg);
 		void bufSerialize(char* buf, int len);
 		void printHeader(char* packet);
-		void forward(char* packet, int len, int itf);
+		void forward(char* packet, int itf);
+		void sendRIPUpdates();
+		int send(char* data, int dataLen, char* destIP, bool rip);
+		void handleRIPPacket(char* packet);
 
 		//DEBUG
 		void popFwdTable();

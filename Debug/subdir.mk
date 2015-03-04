@@ -10,16 +10,19 @@ CPP_SRCS += \
 ../main.cpp 
 
 C_SRCS += \
+../byteorder.c \
 ../ipsum.c 
 
 OBJS += \
 ./AppLayer.o \
 ./IPLayer.o \
 ./LinkLayer.o \
+./byteorder.o \
 ./ipsum.o \
 ./main.o 
 
 C_DEPS += \
+./byteorder.d \
 ./ipsum.d 
 
 CPP_DEPS += \

@@ -53,6 +53,7 @@ int main (int argc, char** argv){
 		newItf.rmtAddr = const_cast<char* >(fileInfo[i].c_str());
 		i++;
 		newItf.mtu = DEFAULT_MTU;
+		newItf.down = false;
 		nodeItfs.push_back(newItf);
 	}
 

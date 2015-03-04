@@ -1,0 +1,1 @@
+byteorder.d: ../byteorder.c
