@@ -1,6 +1,3 @@
-#ifndef LINKLAYER_H
-#define LINKLAYER_H
-
 #include <vector>
 #include <stdio.h>
 #include <string.h>
@@ -184,4 +181,3 @@ int main(int argc, char ** argv) {
 	}
 }
 */
-#endif
