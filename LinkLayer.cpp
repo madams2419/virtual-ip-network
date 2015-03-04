@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
+#include "LinkLayer.h"
 #include "constants.h"
 
 #define MAX_MSG_LENGTH (512)
@@ -14,28 +15,6 @@
 #define SEND_LENGTH (MAX_MSG_LENGTH*3)
 
 using namespace std;
-
-class LinkLayer {
-
-	private:
-		phy_info localPhy;
-		vector<itf_info> itfs;
-		struct addrinfo* localAI;
-
-		int rcvSocket;
-		vector<int> sendSockets;
-
-		vector< vector<char> > packetQueue; // not sure if queue is an c++ implementation
-
-		void start();
-		int createSocket(phy_info phyInfo, struct addrinfo* ai, bool bindSock);
-
-	public:
-		LinkLayer(phy_info localPhy, vector<itf_info> itfs);
-		int send(char* data, int dataLen, int itfNum);
-		int listen(char* buf, int bufLen);
-
-};
 
 LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	this->localPhy = localPhy;
@@ -45,12 +24,16 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	rcvSocket = createSocket(localPhy, localAI, true);
 }
 
+char* LinkLayer::getInterfaceAddr(int itf) {
+	return itfs[itf].locAddr;
+}
+
 /**
  * Sends dataLen bytes of data over the interface specified by itfNum
  */
 int LinkLayer::send(char* data, int dataLen, int itfNum) {
 	int sendSocket, bytesSent;
-	struct addrinfo *aiDest;
+	struct addrinfo *aiDest = new addrinfo;
 
 	sendSocket = createSocket(itfs[itfNum].rmtPhy, aiDest, false);
 
@@ -73,6 +56,7 @@ int LinkLayer::listen(char* buf, int bufLen) {
 		perror("Receive error:");
 		return -1;
 	}
+	return bytesRcvd;
 }
 
 /**

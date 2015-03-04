@@ -1,35 +1,41 @@
 #ifndef IPLAYER_H
 #define IPLAYER_H
 
+#include <map>
 #include <vector>
+#include <queue>
 #include <string>
-#include <stdlib>
-#include <sys/socket>
-#include <arpa/inet.h>
-#include <unistd>
-#include <netdb>
 #include "constants.h"
+#include "LinkLayer.h"
 
-
-using namespace std;
+#define MAX_MSG_LEN (512)
+#define HDR_SIZE sizeof(struct iphdr)
 
 class IPLayer {
 
 	private:
-		Map routingTable;
-		Map forwardingTable;
-		LinkLayer[] myInterfaces;
-		PhyInfo phyInfo;
+		std::map<u_int32_t, route_entry> routingTable;
+		std::map<u_int32_t, int> fwdTable;
+		std::vector<char*> myAddreses;
+		std::queue<std::string> rcvQueue;
+		LinkLayer* linkLayer;
 
-		void start();
+		void runForwarding();
+		void runRouting();
+		int getFwdInterface(u_int32_t daddr);
+		void handleNewPacket(char* packet, int len);
+		struct iphdr* parseHeader(char* packet);
+		void decrementTTL(char* packet);
+		void deliverLocal(char* packet);
+		struct iphdr* genHeader(int dataLen, u_int32_t saddr, u_int32_t daddr);
+		static void runThread(IPLayer* pkg);
 
 	public:
-		IPLayer(PhyInfo pi, LinkLayer[] interfaces);
+		IPLayer(LinkLayer* linkLayer);
+		int send(char* data, int dataLen, char* destIP);
+		int receive(char* buf, int bufLen);
 		bool hasData();
-		byte[] getData();
-		boolean sendData(byte[] data);
-		string printInterfaces();
-		string printRoutes();
+		std::string getData();
 };
 
 #endif

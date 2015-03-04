@@ -9,6 +9,7 @@
 
 #include "AppLayer.h"
 #include "LinkLayer.h"
+#include "IPLayer.h"
 
 using namespace std;
 
