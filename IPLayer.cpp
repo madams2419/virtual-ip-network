@@ -35,8 +35,16 @@ IPLayer::IPLayer(LinkLayer* link) {
 
 	// initialize read write locks
 	pthread_rwlock_init(&rtLock, NULL); // routing table lock
-	pthread_rwlock_init(&ftLock, NULL); // forwarding table lock
 	pthread_rwlock_init(&rqLock, NULL); // request queue lock
+
+	// initialize routing table
+	initRoutingTable();
+
+	// DEBUG
+	printRoutes();
+
+	// send requests on all intefaces
+	sendRIPRequests();
 
 	// create thread to listen for packets
 	pthread_t* listWorker = new pthread_t;
@@ -59,6 +67,27 @@ IPLayer::IPLayer(LinkLayer* link) {
 }
 
 /**
+ * Initialize routing table based on interfaces
+ */
+void IPLayer::initRoutingTable() {
+	pthread_rwlock_wrlock(&rtLock);
+	for (int i = 0; i < interfaces->size(); i++) {
+		itf_info itf = interfaces->at(i);
+		u_int32_t dest = inet_addr(itf.rmtAddr);
+		route_entry rentry;
+
+		// populate route entry
+		rentry.dest = dest;
+		rentry.nextHop = i; // current interface number
+		rentry.cost = 1; // one for adjacent nodes
+		rentry.lastUpdate = clock(); // entry never expires
+
+		routingTable[dest] = rentry;
+	}
+	pthread_rwlock_unlock(&rtLock);
+}
+
+/**
  * Print interfaces
  */
 void IPLayer::printInterfaces() {
@@ -69,7 +98,18 @@ void IPLayer::printInterfaces() {
  * Print routes
  */
 void IPLayer::printRoutes() {
-
+	pthread_rwlock_rdlock(&rtLock);
+	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
+	while(it != routingTable.end()) {
+		u_int32_t dest = it->first;
+		route_entry r = it->second;
+		struct in_addr destIA;
+		destIA.s_addr = dest;
+		string destStr = inet_ntoa(destIA);
+		cout << destStr << "\t" << r.itf << "\t" << r.cost << endl;
+		it++;
+	}
+	pthread_rwlock_unlock(&rtLock);
 }
 
 /**
@@ -178,17 +218,45 @@ void IPLayer::sendRIPUpdates() {
 		}
 		pthread_rwlock_unlock(&rtLock);
 
-		// make RIP request structure
-		rip_packet* rip = new rip_packet;
+		// format RIP update data
+		int routesSize = sizeof(routes) * sizeof(rip_entry);
+		char packet[sizeof(rip_hdr) + routesSize];
+		rip_hdr* rip = (rip_hdr*) packet;
+
+		// form RIP header
 		rip->command = 2; // response command
 		rip->num_entries = sizeof(routes); // size of routing table
-		rip->entries = routes; // array of known routes
+
+		// copy rip route entry array
+		memcpy(&packet[sizeof(rip_hdr)], (char*) routes, routesSize);
 
 		// send RIP packet
-		send((char*) rip, sizeof(rip_packet), itf.rmtAddr, true);
+		send(packet, sizeof(packet), itf.rmtAddr, true);
 	}
 }
 
+/**
+ * Sends RIP update to all active interfaces
+ */
+void IPLayer::sendRIPRequests() {
+	for (int j = 0; j < interfaces->size(); j++) {
+		itf_info itf = interfaces->at(j);
+
+		// continue if interface is down
+		if (itf.down) continue;
+
+		// format RIP update data
+		char packet[sizeof(rip_hdr)];
+		rip_hdr* rip = (rip_hdr*) packet;
+
+		// form RIP header
+		rip->command = 1; // request command
+		rip->num_entries = 0; // no routes in request command
+
+		// send RIP packet
+		send(packet, sizeof(packet), itf.rmtAddr, true);
+	}
+}
 
 /**
  * Handles new packets by forwarding or delivering them locally
@@ -325,6 +393,9 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 	u_int32_t daddr, saddr;
 	struct iphdr* hdr;
 
+	// convert destination ip in dots-and-number form to network order int form
+	daddr = inet_addr(destIP);
+
 	// get LinkLayer interface to send packet over
 	if ((itfNum = getFwdInterface(daddr)) < 0) {
 		printf("Source address belongs to host. Delivering locally.\n");
@@ -346,9 +417,6 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 
 	// initialize buffer to store new packet
 	char packet[packetLen];
-
-	// convert destination ip in dots-and-number form to network order int form
-	daddr = inet_addr(destIP);
 
 	// get local IP address associated with interface in network order int form
 	saddr = inet_addr(linkLayer->getInterfaceAddr(itfNum));
@@ -446,15 +514,15 @@ int IPLayer::getFwdInterface(u_int32_t daddr) {
 	}
 
 	int ret;
-	pthread_rwlock_rdlock(&ftLock);
-	if (fwdTable.count(daddr) == 1) { // daddr is in fwd table; return itf value
-		printf("Fwd table entry found. Forwarding on itf: %d\n", fwdTable[daddr]);
-		ret = fwdTable[daddr];
+	pthread_rwlock_rdlock(&rtLock);
+	if (routingTable.count(daddr) == 1) { // daddr is in fwd table; return itf value
+		printf("Fwd table entry found. Forwarding on itf: %d\n", routingTable[daddr].itf);
+		ret = routingTable[daddr].itf;
 	} else { // daddr is not in fwd table; return default itf
 		printf("Fwd table entry not found. Forwarding on default port.\n");
 		ret = defaultItf;
 	}
-	pthread_rwlock_unlock(&ftLock);
+	pthread_rwlock_unlock(&rtLock);
 
 	return ret;
 }

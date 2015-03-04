@@ -29,8 +29,8 @@ typedef struct {
 	uint32_t dest;
 	uint32_t nextHop;
 	int cost;
-	int TTL;
 	clock_t lastUpdate;
+	int itf;
 } route_entry;
 
 typedef struct {
@@ -42,7 +42,7 @@ typedef struct {
 	uint16_t command;
 	uint16_t num_entries;
 	rip_entry* entries;
-} rip_packet;
+} rip_hdr;
 
 
 #endif

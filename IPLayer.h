@@ -16,10 +16,9 @@ class IPLayer {
 
 	private:
 		std::map<u_int32_t, route_entry> routingTable;
-		std::map<u_int32_t, int> fwdTable;
 		std::queue<std::string> rcvQueue;
 		std::vector<itf_info>* interfaces;
-		pthread_rwlock_t rtLock, ftLock, rqLock;
+		pthread_rwlock_t rtLock, rqLock;
 		LinkLayer* linkLayer;
 		int defaultItf;
 		clock_t startTime;
@@ -39,6 +38,8 @@ class IPLayer {
 		void sendRIPUpdates();
 		int send(char* data, int dataLen, char* destIP, bool rip);
 		void handleRIPPacket(char* packet);
+		void initRoutingTable();
+		void sendRIPRequests();
 
 		//DEBUG
 		void popFwdTable();
