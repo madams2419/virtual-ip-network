@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #ifndef LINKLAYER_H
 #define LINKLAYER_H
 
@@ -11,6 +12,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
+#include "LinkLayer.h"
 #include "constants.h"
 #include "LinkLayer.h"
 
@@ -33,13 +35,16 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	}
 }
 
+char* LinkLayer::getInterfaceAddr(int itf) {
+	return itfs[itf].locAddr;
+}
+
 /**
  * Sends dataLen bytes of data over the interface specified by itfNum
  */
 int LinkLayer::send(char* data, int dataLen, int itfNum) {
 	int sendSocket, bytesSent;
-	struct addrinfo *aiDest = new struct addrinfo;
-
+	struct addrinfo *aiDest = new addrinfo;
 	sendSocket = createSocket(itfs[itfNum].rmtPhy, aiDest, false);
 
 	if ((bytesSent = sendto(sendSocket, data, dataLen, 0, aiDest->ai_addr, aiDest->ai_addrlen)) == -1) {
@@ -61,6 +66,7 @@ int LinkLayer::listen(char* buf, int bufLen) {
 		perror("Receive error:");
 		return -1;
 	}
+	return bytesRcvd;
 }
 
 /**
@@ -169,4 +175,3 @@ int main(int argc, char ** argv) {
 	}
 }
 */
-#endif

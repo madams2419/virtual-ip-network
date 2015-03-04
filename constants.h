@@ -1,10 +1,11 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <string>
+
 #define MAX_ROUTES 128
 #define MAX_TTL 120
 #define MAX_HOST 128
-#include <netinet/in.h>
 
 typedef struct {
 	char* ipAddr;
@@ -24,6 +25,5 @@ typedef struct {
 	int cost;
 	int TTL;
 } route_entry;
-
 
 #endif
