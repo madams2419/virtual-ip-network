@@ -68,7 +68,7 @@ IPLayer::IPLayer(LinkLayer* link) {
 void IPLayer::initRoutingTable() {
 	for (int i = 0; i < interfaces->size(); i++) {
 		itf_info itf = interfaces->at(i);
-		u_int32_t dest = inet_addr(itf.rmtAddr);
+		u_int32_t dest = inet_addr_h(itf.rmtAddr);
 
 		// continue if interface is down
 		if (itf.down) continue;
@@ -104,9 +104,7 @@ void IPLayer::printRoutes() {
 	while(it != routingTable.end()) {
 		u_int32_t dest = it->first;
 		route_entry rentry = it->second;
-		struct in_addr destIA;
-		destIA.s_addr = dest;
-		string destStr = inet_ntoa(destIA);
+		string destStr = inet_htoa(dest);
 		cout << destStr << "\t" << rentry.itf + 1 << "\t" << rentry.cost << endl;
 		it++;
 	}
@@ -298,7 +296,6 @@ void IPLayer::sendRIPRequest(int itfNum) {
  */
 void IPLayer::handleNewPacket(char* packet, int len) {
 	int locItf, fwdItf;
-	int checksum;
 	struct iphdr* hdr;
 
 	// convert packet to host byte order
@@ -367,7 +364,7 @@ void IPLayer::handleRIPPacket(char* packet) {
 	if (rcom == 1) { // packet is RIP request; send RIP response
 		sendRIPUpdate(rcvItf);
 	} else if (rcom == 2) { // packet is RIP response; update routing table
-		//printRIPPacket((char*) rhdr, hdr->saddr);
+		printRIPPacket((char*) rhdr, hdr->saddr);
 		updateRoutingTable((char*) rhdr, hdr->saddr);
 	} else {
 		cout << "Unknown RIP command " << rcom << endl;
@@ -382,9 +379,7 @@ void IPLayer::printRIPPacket(char* rdata, u_int32_t saddr) {
 	rip_entry* rentry = (rip_entry*) &rdata[sizeof(rip_hdr)];
 	cout << "-----------------------------------------" << endl;
 	for (int i = 0; i < rhdr->num_entries; i++) {
-		struct in_addr destIA;
-		destIA.s_addr = rentry[i].address;
-		cout << "Address : " << inet_ntoa(destIA) << endl;
+		cout << "Address : " << inet_htoa(rentry[i].address) << endl;
 		cout << "Cost    : " << rentry[i].cost << endl;
 	}
 	cout << "-----------------------------------------" << endl;
@@ -564,8 +559,8 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 	u_int32_t daddr, saddr;
 	struct iphdr* hdr;
 
-	// convert destination ip in dots-and-number form to network order int form
-	daddr = inet_addr(destIP);
+	// convert destination ip in dots-and-number form to host order int form
+	daddr = inet_addr_h(destIP);
 
 	// get LinkLayer interface to send packet over
 	if ((itfNum = getFwdInterface(daddr)) < 0) {
@@ -652,22 +647,6 @@ void IPLayer::printHeader(char* packet) {
 	cout << "=================" << endl;
 }
 
-/**
- * Convert arbitrary length buffer from host to network order and visa versa
- */
-void IPLayer::bufSerialize(char* buf, int len) {
-	// return if host byte order equals network byte order
-	if (__BYTE_ORDER == __BIG_ENDIAN) return;
-
-	// copy buffer to temporary storage
-	char temp[len];
-	memcpy(temp, buf, len);
-
-	for (int i = 0; i < len; i++) {
-		buf[i] = temp[len - 1 - i];
-	}
-
-}
 
 /**
  * Gets the interface number to use for forwarding the given IP address.
@@ -699,4 +678,37 @@ int IPLayer::getFwdInterface(u_int32_t daddr) {
 	}
 
 	return ret;
+}
+
+/**
+ * Change endianness of buffer if host order != network order
+ */
+void bufSerialize(char* buf, int len) {
+	// return if host byte order equals network byte order
+	if (__BYTE_ORDER == __BIG_ENDIAN) return;
+
+	// copy buffer to temporary storage
+	char temp[len];
+	memcpy(temp, buf, len);
+
+	for (int i = 0; i < len; i++) {
+		buf[i] = temp[len - 1 - i];
+	}
+
+}
+
+/**
+ * Convert IP address in number and dots format to int in host byte order
+ */
+u_int32_t inet_addr_h(char* addrStr) {
+	return ntohl(inet_addr(addrStr));
+}
+
+/**
+ * Convert IP address in host byte order to numbers and dots format
+ */
+std::string inet_htoa(u_int32_t addrInt) {
+	struct in_addr temp;
+	temp.s_addr = htonl(addrInt);
+	return inet_ntoa(temp);
 }

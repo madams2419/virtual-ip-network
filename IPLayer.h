@@ -12,6 +12,10 @@
 
 #define HDR_SIZE sizeof(struct iphdr)
 
+void bufSerialize(char* buf, int len);
+u_int32_t inet_addr_h(char* addrStr);
+std::string inet_htoa(u_int32_t addrInt);
+
 class IPLayer {
 
 	private:
@@ -31,7 +35,6 @@ class IPLayer {
 		void deliverLocal(char* packet);
 		void genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr, bool rip);
 		static void *runThread(void* pkg);
-		void bufSerialize(char* buf, int len);
 		void printHeader(char* packet);
 		void forward(char* packet, int itf);
 		void broadcastRIPUpdates();

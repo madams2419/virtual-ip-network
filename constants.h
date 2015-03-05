@@ -4,6 +4,10 @@
 #include <string>
 #include <stdint.h>
 #include <ctime>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include "ip.h"
 
 #define MAX_ROUTES 128
 #define MAX_TTL 64
@@ -43,6 +47,5 @@ typedef struct {
 	uint16_t command;
 	uint16_t num_entries;
 } rip_hdr;
-
 
 #endif

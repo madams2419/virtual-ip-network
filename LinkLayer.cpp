@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
-#include "LinkLayer.h"
 #include "constants.h"
+#include "IPLayer.h"
 #include "LinkLayer.h"
 
 using namespace std;
@@ -86,7 +86,7 @@ u_int32_t LinkLayer::getInterfaceAddr(int itf, string type) {
 		return -1;
 	}
 
-	return inet_addr(addrChar);
+	return inet_addr_h(addrChar);
 }
 
 /**
