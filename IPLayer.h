@@ -39,7 +39,7 @@ class IPLayer {
 		void printHeader(char* packet);
 		void forward(char* packet, int itf);
 		void broadcastRIPUpdates();
-		int send(char* data, int dataLen, char* destIP, bool rip);
+		int send(char* data, int dataLen, char* destIP, bool rip, int itf);
 		void handleRIPPacket(char* packet);
 		void initRoutingTable();
 		void broadcastRIPRequests();

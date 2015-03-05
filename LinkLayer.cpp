@@ -131,7 +131,9 @@ bool LinkLayer::itfNumValid(int itfNum) {
  * Sends dataLen bytes of data over the interface specified by itfNum
  */
 int LinkLayer::send(char* data, int dataLen, int itfNum) {
-	if (!itfNumValid(itfNum)) return -1;
+	if (!itfNumValid(itfNum)) {
+		return -1;
+	}
 
 	if (itfs[itfNum].down) return -1;
 

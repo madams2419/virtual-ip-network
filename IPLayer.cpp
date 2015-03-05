@@ -226,7 +226,6 @@ void IPLayer::broadcastRIPUpdates() {
  */
 void IPLayer::sendRIPUpdate(int itfNum) {
 	if (!linkLayer->itfNumValid(itfNum) || interfaces->at(itfNum).down) {
-		cout << "Send RIP Update." << endl;
 		return;
 	}
 
@@ -278,7 +277,7 @@ void IPLayer::sendRIPUpdate(int itfNum) {
 	memcpy(&packet[sizeof(rip_hdr)], (char*) routes, routesSize);
 
 	// send RIP packet
-	send(packet, sizeof(packet), itf.rmtAddr, true);
+	send(packet, sizeof(packet), itf.rmtAddr, true, itfNum);
 }
 
 /**
@@ -295,7 +294,6 @@ void IPLayer::broadcastRIPRequests() {
  */
 void IPLayer::sendRIPRequest(int itfNum) {
 	if (!linkLayer->itfNumValid(itfNum)) {
-		cout << "Send RIP requst." << endl;
 		return;
 	}
 
@@ -314,14 +312,14 @@ void IPLayer::sendRIPRequest(int itfNum) {
 	rip->num_entries = 0; // no routes in request command
 
 	// send RIP packet
-	send(packet, sizeof(packet), itf.rmtAddr, true);
+	send(packet, sizeof(packet), itf.rmtAddr, true, itfNum);
 }
 
 /**
  * Handles new packets by forwarding or delivering them locally
  */
 void IPLayer::handleNewPacket(char* packet, int len) {
-	int locItf, fwdItf;
+	int fwdItf;
 	struct iphdr* hdr;
 
 	// convert packet to host byte order
@@ -331,9 +329,8 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	hdr = (struct iphdr*) packet;
 
 	// return if packet was delivered over a down interface
-	locItf = linkLayer->getInterfaceFromLocalAddr(hdr->daddr);
+	int locItf = linkLayer->getInterfaceFromLocalAddr(hdr->daddr);
 	if (linkLayer->itfNumValid(locItf) && interfaces->at(locItf).down) {
-		cout << "Handle new packet." << endl;
 		return;
 	}
 
@@ -493,8 +490,7 @@ bool IPLayer::clearExpiredRoute(u_int32_t dest) {
 	route_entry rentry = routingTable[dest];
 	double timeElapsed = (clock() - rentry.lastUpdate) / (double) CLOCKS_PER_SEC;
 	// remove route if it has expired or it's cost is equal to infinity
-	if (timeElapsed > (double) ROUTE_EXP_TIME ||
-			rentry.cost == INF_COST) {
+	if (timeElapsed > (double) ROUTE_EXP_TIME) {
 		routingTable.erase(dest);
 		return true;
 	}
@@ -572,13 +568,14 @@ void IPLayer::deliverLocal(char* packet) {
  * Send generic data (public send function)
  */
 int IPLayer::send(char* data, int dataLen, char* destIP) {
-	send(data, dataLen, destIP, false);
+	send(data, dataLen, destIP, false, -1);
 }
 
 /**
  * Encapsulates RIP packet or generic data in IP header and sends via link layer
+ * Itf field optionally overrides the dynamic itf forwarding computation (override if it is > 0)
  */
-int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
+int IPLayer::send(char* data, int dataLen, char* destIP, bool rip, int itf) {
 	int bytesSent, itfNum;
 	u_int32_t daddr, saddr;
 	struct iphdr* hdr;
@@ -587,7 +584,9 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 	daddr = inet_addr_h(destIP);
 
 	// get LinkLayer interface to send packet over
-	if ((itfNum = getFwdInterface(daddr)) < 0) {
+	if (itf >= 0) {
+		itfNum = itf;
+	} else if ((itfNum = getFwdInterface(daddr)) < 0) {
 		// deliver local if destination address belongs to node
 		string locData(data, dataLen);
 		pthread_rwlock_wrlock(&rqLock);
