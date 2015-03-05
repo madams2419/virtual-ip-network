@@ -409,7 +409,7 @@ void IPLayer::updateRoutingTable(char* rdata, u_int32_t saddr) {
 		route_entry newrt;
 		newrt.dest = rentry[i].address;
 		newrt.nextHop = saddr;
-		newrt.cost = rentry[i].cost + 1;
+		newrt.cost = (rentry[i].cost == INF_COST) ? INF_COST : rentry[i].cost + 1;
 		newrt.itf = linkLayer->getInterfaceFromRemoteAddr(saddr);
 		if (mergeRoute(newrt)) rtChanged = true;
 	}
