@@ -41,7 +41,6 @@ typedef struct {
 typedef struct {
 	uint16_t command;
 	uint16_t num_entries;
-	rip_entry* entries;
 } rip_hdr;
 
 

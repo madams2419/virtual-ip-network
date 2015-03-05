@@ -31,7 +31,6 @@ IPLayer::IPLayer(LinkLayer* link) {
 	linkLayer = link;
 	interfaces = linkLayer->getInterfaces();
 	defaultItf = 0;
-	startTime = clock();
 
 	// initialize read write locks
 	pthread_rwlock_init(&rtLock, NULL); // routing table lock
@@ -40,11 +39,8 @@ IPLayer::IPLayer(LinkLayer* link) {
 	// initialize routing table
 	initRoutingTable();
 
-	// DEBUG
-	printRoutes();
-
 	// send requests on all intefaces
-	sendRIPRequests();
+	broadcastRIPRequests();
 
 	// create thread to listen for packets
 	pthread_t* listWorker = new pthread_t;
@@ -186,90 +182,98 @@ void IPLayer::runListening() {
  * Loops continuously sending RIP updates at regular intervals on all active interfaces
  */
 void IPLayer::runRouting() {
-	clock_t start = clock();
 	while (1) {
-		clock_t end  = clock();
-		double split = (end - start) / (double) CLOCKS_PER_SEC;
-		if (split >= RIP_UPDATE_INT) {
-			// send RIP updates
-			sendRIPUpdates();
-			// reset start clock
-			start = clock();
+		// send RIP updates
+		broadcastRIPUpdates();
+		// sleep for update interval
+		sleep(ROUTE_UPDATE_INTERVAL);
 		}
 	}
 }
 
 /**
- * Sends RIP update to all active interfaces
+ * Broadcast RIP update to all active interfaces
  */
-void IPLayer::sendRIPUpdates() {
-	for (int j = 0; j < interfaces->size(); j++) {
-		itf_info itf = interfaces->at(j);
-
-		// continue if interface is down
-		if (itf.down) continue;
-
-		// populate array of rip route entries
-		int numRoutes = routingTable.size();
-		pthread_rwlock_rdlock(&rtLock);
-		rip_entry routes[numRoutes];
-		map<u_int32_t, route_entry>::iterator it = routingTable.begin();
-		int cnt = 0;
-		while(it != routingTable.end()) {
-			u_int32_t dest = it->first;
-			route_entry rentry = it->second;
-
-			routes[cnt].cost = rentry.cost;
-			routes[cnt].address = dest;
-
-			cnt++;
-			it++;
-		}
-		pthread_rwlock_unlock(&rtLock);
-
-		// format RIP update data
-		int routesSize = numRoutes * sizeof(rip_entry);
-
-		// DEBUG
-		cout << "routesSize : " << routesSize << endl;
-		cout << "sizeof(routes) : " << sizeof(routes) << endl;
-
-		char packet[sizeof(rip_hdr) + routesSize];
-		rip_hdr* rip = (rip_hdr*) packet;
-
-		// form RIP header
-		rip->command = 2; // response command
-		rip->num_entries = numRoutes; // size of routing table
-
-		// copy rip route entry array
-		memcpy(&packet[sizeof(rip_hdr)], (char*) routes, routesSize);
-
-		// send RIP packet
-		send(packet, sizeof(packet), itf.rmtAddr, true);
+void IPLayer::broadcastRIPUpdates() {
+	for (int i = 0; i < interfaces->size(); i++) {
+		sendRIPUpdate(i);
 	}
 }
 
 /**
- * Sends RIP update to all active interfaces
+ * Send RIP update to specified address
  */
-void IPLayer::sendRIPRequests() {
-	for (int j = 0; j < interfaces->size(); j++) {
-		itf_info itf = interfaces->at(j);
+void IPLayer::sendRIPUpdate(int itfNum) {
+	// get interface
+	itf_info itf = interfaces->at(itfNum);
 
-		// continue if interface is down
-		if (itf.down) continue;
+	// return if interface is down
+	if (itf.down) return;
 
-		// format RIP update data
-		char packet[sizeof(rip_hdr)];
-		rip_hdr* rip = (rip_hdr*) packet;
+	// populate array of rip route entries
+	pthread_rwlock_rdlock(&rtLock);
+	int numRoutes = routingTable.size();
+	rip_entry routes[numRoutes];
+	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
+	int cnt = 0;
+	while(it != routingTable.end()) {
+		u_int32_t dest = it->first;
+		route_entry rentry = it->second;
 
-		// form RIP header
-		rip->command = 1; // request command
-		rip->num_entries = 0; // no routes in request command
+		routes[cnt].cost = rentry.cost;
+		routes[cnt].address = dest;
 
-		// send RIP packet
-		send(packet, sizeof(packet), itf.rmtAddr, true);
+		cnt++;
+		it++;
 	}
+	pthread_rwlock_unlock(&rtLock);
+
+	// format RIP update data
+	int routesSize = numRoutes * sizeof(rip_entry);
+
+	char packet[sizeof(rip_hdr) + routesSize];
+	rip_hdr* rip = (rip_hdr*) packet;
+
+	// form RIP header
+	rip->command = 2; // response command
+	rip->num_entries = numRoutes; // size of routing table
+
+	// copy rip route entry array
+	memcpy(&packet[sizeof(rip_hdr)], (char*) routes, routesSize);
+
+	// send RIP packet
+	send(packet, sizeof(packet), itf.rmtAddr, true);
+}
+
+/**
+ * Broadcast RIP request to all active interfaces
+ */
+void IPLayer::broadcastRIPRequests() {
+	for (int i = 0; i < interfaces->size(); i++) {
+		sendRIPRequest(i);
+	}
+}
+
+/**
+ * Send RIP request on specified interface
+ */
+void IPLayer::sendRIPRequest(int itfNum) {
+	// get interface
+	itf_info itf = interfaces->at(itfNum);
+
+	// return if interface is down
+	if (itf.down) return;
+
+	// format RIP request data (only header)
+	char packet[sizeof(rip_hdr)];
+	rip_hdr* rip = (rip_hdr*) packet;
+
+	// form RIP header
+	rip->command = 1; // request command
+	rip->num_entries = 0; // no routes in request command
+
+	// send RIP packet
+	send(packet, sizeof(packet), itf.rmtAddr, true);
 }
 
 /**
@@ -320,8 +324,105 @@ void IPLayer::handleNewPacket(char* packet, int len) {
  * Processes RIP packet
  */
 void IPLayer::handleRIPPacket(char* packet) {
-	cout << "GOT RIP PACKET!!!" << endl;
+	// get ip header length
+	struct iphdr* hdr = (struct iphdr*) packet;
+	int hswop = hdr->ihl * 4; // header size with options
+
+	// get rip header
+	rip_hdr* rhdr = (rip_hdr*) &packet[hswop];
+
+	// length verification
+	int rlen = sizeof(rip_hdr) + rhdr->num_entries * sizeof(rip_entry);
+	int ipdlen = hdr->tot_len - hswop;
+	if (rlen != ipdlen) {
+		cout << "RIP data length does not agree with IP packet length. Dropping packet.";
+		return;
+	}
+
+	int rcom = rhdr->command;
+	if (rcom == 1) {
+		cout << "Got RIP request packet." << endl;
+		sendRIPUpdate(getFwdInterface(hdr->saddr));
+	} else if (rcom == 2) {
+		cout << "Got RIP response packet." << endl;
+		updateRoutingTable((char*) rhdr, hdr->saddr);
+	} else {
+		cout << "Unknown RIP command " << rcom << endl;
+	}
 }
+
+/**
+ * Parses RIP packet and updates routing table
+ */
+void IPLayer::updateRoutingTable(char* rdata, u_int32_t saddr) {
+	int itf = getFwdInterface(saddr);
+	rip_hdr* rhdr = (rip_hdr*) rdata;
+	rip_entry* rentry = (rip_entry*) &rdata[sizeof(rip_hdr)];
+	for (int i = 0; i < rhdr->num_entries; i++) {
+		route_entry* newrt = new route_entry;
+		newrt->dest = rentry[i].address;
+		newrt->nextHop = saddr;
+		newrt->cost = rentry[i].cost + 1;
+		newrt->itf = getFwdInterface(saddr);
+		mergeRoute(newrt);
+	}
+}
+
+/**
+ * Merges data from new route into routing table as appropriate
+ */
+void IPLayer::mergeRoute(route_entry* newrt) {
+	bool update = false;
+	// check if destination address is in routing table
+	if (routingTable.count(newrt->dest) == 0) {
+		// brand new route
+		clearExpiredRoutes();
+		if (routingTable.size() < MAX_ROUTES) {
+			// space available in table
+		} else {
+			// routing table full
+			cout << "Routing table full. Discarding new route." << endl;
+			return;
+		}
+	} else { // existing route
+		oldrt = routingTable[newrt->dest];
+		if (newrt->cost < oldrt->cost) {
+			// new route is lower cost
+		} else if (newrt->nextHop == oldrt->nextHop) {
+			// nexthop metrics may have changed
+		} else {
+			// route uninteresting
+			return;
+		}
+	}
+
+	// add new route
+	pthread_rwlock_wrlock(&rtLock);
+	newrt->lastUpdate = clock();
+	routingTable[newrt->dest] = *newrt;
+	pthread_rwlock_unlock(&rtLock);
+}
+
+/**
+ * Iterate through routing table and clear any expired entries
+ */
+void IPLayer::clearExpiredRoutes() {
+	pthread_rwlock_wrlock(&rtLock);
+	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
+	while(it != routingTable.end()) {
+		u_int32_t dest = it->first;
+		route_entry rentry = it->second;
+		it++;
+		double timeElapsed = (clock() - rentry->lastUpdate()) / (double) CLOCKS_PER_SEC;
+		if (timeElapsed > ROUTE_EXP_TIME) {
+			// remove expired entry
+		}
+		it++;
+	}
+	pthread_rwlock_unlock(&rtLock);
+}
+
+
 
 /**
  * Forwards packet on specified interface. Packet must be host order.

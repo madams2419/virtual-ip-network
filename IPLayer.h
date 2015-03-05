@@ -21,7 +21,6 @@ class IPLayer {
 		pthread_rwlock_t rtLock, rqLock;
 		LinkLayer* linkLayer;
 		int defaultItf;
-		clock_t startTime;
 
 		void runListening();
 		void runRouting();
@@ -35,11 +34,16 @@ class IPLayer {
 		void bufSerialize(char* buf, int len);
 		void printHeader(char* packet);
 		void forward(char* packet, int itf);
-		void sendRIPUpdates();
+		void broadcastRIPUpdates();
 		int send(char* data, int dataLen, char* destIP, bool rip);
 		void handleRIPPacket(char* packet);
 		void initRoutingTable();
-		void sendRIPRequests();
+		void broadcastRIPRequests();
+		void sendRIPUpdate(int itfNum);
+		void sendRIPRequest(int itfNum);
+		void updateRoutingTable(char* rdata, u_int32_t saddr);
+		void mergeRoute(route_entry* newrt);
+		void clearExpiredRoutes();
 
 		//DEBUG
 		void popFwdTable();
