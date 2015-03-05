@@ -492,7 +492,9 @@ bool IPLayer::clearExpiredRoute(u_int32_t dest) {
 	if (routingTable.count(dest) == 0) return false;
 	route_entry rentry = routingTable[dest];
 	double timeElapsed = (clock() - rentry.lastUpdate) / (double) CLOCKS_PER_SEC;
-	if (timeElapsed > (double) ROUTE_EXP_TIME) {
+	// remove route if it has expired or it's cost is equal to infinity
+	if (timeElapsed > (double) ROUTE_EXP_TIME ||
+			rentry.cost == INF_COST) {
 		routingTable.erase(dest);
 		return true;
 	}
