@@ -34,7 +34,7 @@ class IPLayer {
 		struct iphdr* parseHeader(char* packet);
 		void decrementTTL(char* packet);
 		void deliverLocal(char* packet);
-		void genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr, bool rip);
+		void genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr, bool rip, u_int32_t fragOffset, bool moreFrag);
 		static void *runThread(void* pkg);
 		void printHeader(char* packet);
 		void forward(char* packet, int itf);
@@ -50,6 +50,8 @@ class IPLayer {
 		bool mergeRoute(route_entry newrt);
 		void clearExpiredRoutes();
 		bool clearExpiredRoute(u_int32_t dest);
+		int send(char* data, int dataLen, char* destIP, bool rip, int itf, u_int32_t fragOffset, bool moreFrag);
+		int fragmentedSend(char* data, int dataLen, char* destIP, bool rip, int itf, int mtu);
 
 		//DEBUG
 		void popFwdTable();

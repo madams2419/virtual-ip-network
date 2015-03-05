@@ -568,17 +568,20 @@ void IPLayer::deliverLocal(char* packet) {
  * Send generic data (public send function)
  */
 int IPLayer::send(char* data, int dataLen, char* destIP) {
-	send(data, dataLen, destIP, false, -1);
+	return send(data, dataLen, destIP, false, -1);
+}
+
+int IPLayer::send(char* data, int dataLen, char* destIP, bool rip, int itf) {
+	return send(data, dataLen, destIP, rip, itf, 0, false);
 }
 
 /**
  * Encapsulates RIP packet or generic data in IP header and sends via link layer
  * Itf field optionally overrides the dynamic itf forwarding computation (override if it is > 0)
  */
-int IPLayer::send(char* data, int dataLen, char* destIP, bool rip, int itf) {
+int IPLayer::send(char* data, int dataLen, char* destIP, bool rip, int itf, u_int32_t fragOffset, bool moreFrag) {
 	int bytesSent, itfNum;
 	u_int32_t daddr, saddr;
-	struct iphdr* hdr;
 
 	// convert destination ip in dots-and-number form to host order int form
 	daddr = inet_addr_h(destIP);
@@ -599,9 +602,8 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip, int itf) {
 	int packetLen = dataLen + HDR_SIZE;
 	int mtu = linkLayer->getMTU(itfNum);
 	if (packetLen > mtu) {
-		printf("Packet length greater than interface MTU: fragmenting...");
-		//TODO fragmentation
-		return -1;
+		printf("Packet length greater than interface MTU: fragmenting...\n");
+		return fragmentedSend(data, dataLen, destIP, rip, itf, mtu);
 	}
 
 	// initialize buffer to store new packet
@@ -611,7 +613,7 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip, int itf) {
 	saddr = linkLayer->getInterfaceLocalAddr(itfNum);
 
 	// generate new data IP header
-	genHeader(packet, dataLen, saddr, daddr, rip);
+	genHeader(packet, dataLen, saddr, daddr, rip, fragOffset, moreFrag);
 
 	// copy data to packet buffer
 	memcpy(&packet[HDR_SIZE], data, dataLen);
@@ -629,10 +631,31 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip, int itf) {
 }
 
 /**
+ * Fragments and sends packet in pieces
+ */
+int IPLayer::fragmentedSend(char* data, int dataLen, char* destIP, bool rip, int itf, int mtu) {
+	int dataSent = 0;
+	int totalSent = 0;
+	int maxDataLen = mtu - HDR_SIZE;
+	int fragSize = maxDataLen;
+	while(dataSent < dataLen) {
+		int toSend = dataLen - dataSent;
+		fragSize = (toSend > maxDataLen) ? maxDataLen : toSend;
+		totalSent += send(data, fragSize, destIP, rip, itf, dataSent / 8, ( dataSent < dataLen ));
+		dataSent += fragSize;
+		printf("Sent %d byte fragment\n", fragSize);
+	}
+	return totalSent;
+}
+
+/**
  * Inserts header at the beginning of the supplied buffer
  */
-void IPLayer::genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr, bool rip) {
+void IPLayer::genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr, bool rip, u_int32_t fragOffset, bool moreFrag) {
 	struct iphdr* hdr = (struct iphdr*) buf;
+
+	u_int32_t fragFlag = 16384;
+	u_int32_t fragField = (moreFrag) ? fragOffset + fragFlag : fragOffset;
 
 	// pack header
 	hdr->version = 4; // IP version 4
@@ -640,7 +663,7 @@ void IPLayer::genHeader(char* buf, int dataLen, u_int32_t saddr, u_int32_t daddr
 	hdr->tos = 0; // no TOS protocol
 	hdr->tot_len = (hdr->ihl * 4) + dataLen; // header length (in bytes) + data length
 	hdr->id = 0; // fragmentation not supported
-	hdr->frag_off = 0; // fragmentation not supported
+	hdr->frag_off = fragField; // fragmentation offset w/ flag
 	hdr->ttl = MAX_TTL; // maximum TTL
 	hdr->protocol = (rip) ? 200 : 0; // 200 for RIP, 0 for data
 	hdr->check = 0; // checksum is zero for calculation
