@@ -133,6 +133,6 @@ void AppLayer::processCommand(const string& command){
 	} else if (commandType.compare("down") == 0) {
 		deactivateInterface(toDo[1]);
 	} else {
-		cout << "The command is " << commandType << " which cannot be recognized. Please re-enter:" << endl;
+		cout << "The command is " << commandType << " which cannot be recognized. Please try again." << endl;
 	}
 }

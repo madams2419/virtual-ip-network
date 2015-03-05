@@ -114,10 +114,11 @@ void IPLayer::printRoutes() {
  * Activate interface
  */
 void IPLayer::activateInterface(int itf) {
-	if (itf >= interfaces->size()) {
+	if (itf < 0 || itf >= interfaces->size()) {
 		printf("Interface %d not found.\n", itf + 1);
 	} else {
 		interfaces->at(itf).down = false;
+		broadcastRIPRequests();
 		printf("Interface %d up.\n", itf + 1);
 	}
 }
@@ -126,7 +127,7 @@ void IPLayer::activateInterface(int itf) {
  * Deactivate interface
  */
 void IPLayer::deactivateInterface(int itf) {
-	if (itf >= interfaces->size()) {
+	if (itf < 0 || itf >= interfaces->size()) {
 		printf("Interface %d not found.\n", itf + 1);
 	} else {
 		interfaces->at(itf).down = true;
@@ -203,6 +204,9 @@ void IPLayer::broadcastRIPUpdates() {
  * Send RIP update to specified address
  */
 void IPLayer::sendRIPUpdate(int itfNum) {
+	if (!linkLayer->itfNumValid(itfNum) || interfaces->at(itfNum).down)
+		return;
+
 	// get interface
 	itf_info itf = interfaces->at(itfNum);
 
@@ -265,6 +269,8 @@ void IPLayer::broadcastRIPRequests() {
  * Send RIP request on specified interface
  */
 void IPLayer::sendRIPRequest(int itfNum) {
+	if (!linkLayer->itfNumValid(itfNum)) return;
+
 	// get interface
 	itf_info itf = interfaces->at(itfNum);
 
@@ -299,7 +305,7 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 
 	// return if packet was delivered over a down interface
 	locItf = linkLayer->getInterfaceID(hdr->daddr);
-	if (interfaces->at(locItf).down) {
+	if (linkLayer->itfNumValid(locItf) && interfaces->at(locItf).down) {
 		return;
 	}
 
@@ -319,10 +325,11 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 
 	// forward, delivery locally, or handle RIP
 	if ((fwdItf = getFwdInterface(hdr->daddr)) == -1) {
-		if (hdr->protocol == 200)
+		if (hdr->protocol == 200) {
 			handleRIPPacket(packet);
-		else
+		} else {
 			deliverLocal(packet);
+		}
 	} else {
 		forward(packet, fwdItf);
 	}

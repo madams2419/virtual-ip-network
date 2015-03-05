@@ -57,6 +57,7 @@ void LinkLayer::printInterfaces() {
  * Returns the local IP address associated with the specified interface
  */
 char* LinkLayer::getInterfaceAddr(int itf) {
+	if (!itfNumValid(itf)) return NULL;
 	char* addr = itfs[itf].locAddr;
 	return addr;
 }
@@ -74,9 +75,20 @@ int LinkLayer::getInterfaceID(u_int32_t addr) {
 }
 
 /**
+ * Returns true if the interface number is valid
+ */
+bool LinkLayer::itfNumValid(int itfNum) {
+	bool isValid = (itfNum >= 0) && (itfNum < itfs.size());
+	if (!isValid) cout << "Interface number " << itfNum << " is invalid" << endl;
+	return isValid;
+}
+
+/**
  * Sends dataLen bytes of data over the interface specified by itfNum
  */
 int LinkLayer::send(char* data, int dataLen, int itfNum) {
+	if (!itfNumValid(itfNum)) return -1;
+
 	if (itfs[itfNum].down) return -1;
 
 	int sendSocket, bytesSent;

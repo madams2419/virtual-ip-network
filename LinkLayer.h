@@ -31,6 +31,7 @@ class LinkLayer {
 		void setMTU(int itfNum, int mtu) {itfs[itfNum].mtu = mtu;};
 		std::vector<itf_info>* getInterfaces() {return &itfs;};
 		void printInterfaces();
+		bool itfNumValid(int itfNum);
 };
 
 #endif
