@@ -40,9 +40,6 @@ IPLayer::IPLayer(LinkLayer* link) {
 	// initialize routing table
 	initRoutingTable();
 
-	// DEBUG
-	printRoutes();
-
 	// send requests on all intefaces
 	sendRIPRequests();
 
@@ -117,10 +114,10 @@ void IPLayer::printRoutes() {
  */
 void IPLayer::activateInterface(int itf) {
 	if (itf >= interfaces->size()) {
-		printf("Interface %d not found.\n", itf);
+		printf("Interface %d not found.\n", itf + 1);
 	} else {
 		interfaces->at(itf).down = false;
-		printf("Interface %d up.\n", itf);
+		printf("Interface %d up.\n", itf + 1);
 	}
 }
 
@@ -129,10 +126,10 @@ void IPLayer::activateInterface(int itf) {
  */
 void IPLayer::deactivateInterface(int itf) {
 	if (itf >= interfaces->size()) {
-		printf("Interface %d not found.\n", itf);
+		printf("Interface %d not found.\n", itf + 1);
 	} else {
 		interfaces->at(itf).down = true;
-		printf("Interface %d down.\n", itf);
+		printf("Interface %d down.\n", itf + 1);
 	}
 }
 
@@ -210,22 +207,33 @@ void IPLayer::sendRIPUpdates() {
 		if (itf.down) continue;
 
 		// populate array of rip route entries
+		int numRoutes = routingTable.size();
 		pthread_rwlock_rdlock(&rtLock);
-		rip_entry routes[routingTable.size()];
-		for(int i = 0; i < routingTable.size(); i++) {
+		rip_entry routes[numRoutes];
+
+		//DEBUG
+		cout << "numRoutes: " << numRoutes << endl;
+		cout << "rt.size(): " << routingTable.size() << endl;
+		for(int i = 0; i < numRoutes; i++) {
+			cout << "rt.size(): " << routingTable.size() << endl;
 			routes[i].cost = routingTable[i].cost;
 			routes[i].address = routingTable[i].dest;
 		}
 		pthread_rwlock_unlock(&rtLock);
 
 		// format RIP update data
-		int routesSize = sizeof(routes) * sizeof(rip_entry);
+		int routesSize = numRoutes * sizeof(rip_entry);
+
+		// DEBUG
+		cout << "routesSize : " << routesSize << endl;
+		cout << "sizeof(routes) : " << sizeof(routes) << endl;
+
 		char packet[sizeof(rip_hdr) + routesSize];
 		rip_hdr* rip = (rip_hdr*) packet;
 
 		// form RIP header
 		rip->command = 2; // response command
-		rip->num_entries = sizeof(routes); // size of routing table
+		rip->num_entries = numRoutes; // size of routing table
 
 		// copy rip route entry array
 		memcpy(&packet[sizeof(rip_hdr)], (char*) routes, routesSize);
