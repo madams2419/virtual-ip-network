@@ -26,7 +26,7 @@ class LinkLayer {
 		int send(char* data, int dataLen, int itfNum);
 		int listen(char* buf, int bufLen);
 		char* getInterfaceAddr(int itf);
-		bool isLocalAddr(u_int32_t addr);
+		int getInterfaceID(u_int32_t addr);
 		int getMTU(int itfNum) {return itfs[itfNum].mtu;};
 		void setMTU(int itfNum, int mtu) {itfs[itfNum].mtu = mtu;};
 		std::vector<itf_info>* getInterfaces() {return &itfs;};

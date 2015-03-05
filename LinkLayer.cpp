@@ -62,24 +62,23 @@ char* LinkLayer::getInterfaceAddr(int itf) {
 }
 
 /**
- * Returns true if the specified address matches a local interface IP address
+ * Returns ID of interface with local VIP matched addr
+ * Returns -1 if no such interface exists
  */
-bool LinkLayer::isLocalAddr(u_int32_t addr) {
-	bool ret = false;
+int LinkLayer::getInterfaceID(u_int32_t addr) {
 	for(int i = 0; i < itfs.size(); i++) {
-		u_int32_t locAddr = inet_addr(getInterfaceAddr(i));
-		if (addr == locAddr) {
-			ret = true;
-			break;
-		}
+		if (addr == inet_addr(getInterfaceAddr(i)))
+			return i;
 	}
-	return ret;
+	return -1;
 }
 
 /**
  * Sends dataLen bytes of data over the interface specified by itfNum
  */
 int LinkLayer::send(char* data, int dataLen, int itfNum) {
+	if (itfs[itfNum].down) return -1;
+
 	int sendSocket, bytesSent;
 	struct addrinfo *aiDest = new addrinfo;
 
