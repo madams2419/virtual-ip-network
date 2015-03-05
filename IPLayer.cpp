@@ -208,13 +208,21 @@ void IPLayer::sendRIPUpdate(int itfNum) {
 	// return if interface is down
 	if (itf.down) return;
 
-	// populate array of rip route entries
+	// make rip entry buffer
+	int numEntries = routingTable.size() + interfaces->size();
+	rip_entry routes[numEntries];
+
+	// fill buffer with interface information
+	int cnt;
+	for (cnt = 0; cnt < interfaces->size(); cnt++) {
+		routes[cnt].cost = 0;
+		routes[cnt].address = inet_addr(linkLayer->getInterfaceAddr(cnt));
+	}
+
+	// fill buffer with routing table information
 	pthread_rwlock_rdlock(&rtLock);
-	int numRoutes = routingTable.size();
-	rip_entry routes[numRoutes];
 	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
-	int cnt = 0;
-	while(it != routingTable.end()) {
+	while (it != routingTable.end()) {
 		u_int32_t dest = it->first;
 		route_entry rentry = it->second;
 
@@ -227,20 +235,17 @@ void IPLayer::sendRIPUpdate(int itfNum) {
 	pthread_rwlock_unlock(&rtLock);
 
 	// format RIP update data
-	int routesSize = numRoutes * sizeof(rip_entry);
+	int routesSize = numEntries * sizeof(rip_entry);
 
 	char packet[sizeof(rip_hdr) + routesSize];
 	rip_hdr* rip = (rip_hdr*) packet;
 
 	// form RIP header
 	rip->command = 2; // response command
-	rip->num_entries = numRoutes; // size of routing table
+	rip->num_entries = numEntries; // size of routing table
 
 	// copy rip route entry array
 	memcpy(&packet[sizeof(rip_hdr)], (char*) routes, routesSize);
-
-	//DEBUG
-	cout << "Sent RIP update" << endl;
 
 	// send RIP packet
 	send(packet, sizeof(packet), itf.rmtAddr, true);
@@ -272,9 +277,6 @@ void IPLayer::sendRIPRequest(int itfNum) {
 	// form RIP header
 	rip->command = 1; // request command
 	rip->num_entries = 0; // no routes in request command
-
-	//DEBUG
-	cout << "Sent RIP request" << endl;
 
 	// send RIP packet
 	send(packet, sizeof(packet), itf.rmtAddr, true);
@@ -341,10 +343,8 @@ void IPLayer::handleRIPPacket(char* packet) {
 
 	int rcom = rhdr->command;
 	if (rcom == 1) {
-		cout << "Got RIP request packet." << endl;
 		sendRIPUpdate(getFwdInterface(hdr->saddr));
 	} else if (rcom == 2) {
-		cout << "Got RIP response packet." << endl;
 		updateRoutingTable((char*) rhdr, hdr->saddr);
 	} else {
 		cout << "Unknown RIP command " << rcom << endl;
@@ -355,50 +355,62 @@ void IPLayer::handleRIPPacket(char* packet) {
  * Parses RIP packet and updates routing table
  */
 void IPLayer::updateRoutingTable(char* rdata, u_int32_t saddr) {
+	bool rtChanged = false;
 	rip_hdr* rhdr = (rip_hdr*) rdata;
 	rip_entry* rentry = (rip_entry*) &rdata[sizeof(rip_hdr)];
 	for (int i = 0; i < rhdr->num_entries; i++) {
-		route_entry* newrt = new route_entry;
-		newrt->dest = rentry[i].address;
-		newrt->nextHop = saddr;
-		newrt->cost = rentry[i].cost + 1;
-		newrt->itf = getFwdInterface(saddr);
-		mergeRoute(newrt);
+		route_entry newrt;
+		newrt.dest = rentry[i].address;
+		newrt.nextHop = saddr;
+		newrt.cost = rentry[i].cost + 1;
+		newrt.itf = getFwdInterface(saddr);
+		if (mergeRoute(newrt)) rtChanged = true;
 	}
+
+	// triggered update
+	if (rtChanged) broadcastRIPUpdates();
 }
 
 /**
  * Merges data from new route into routing table as appropriate
+ * Returns true if routing table routes are changed or added.
  */
-void IPLayer::mergeRoute(route_entry* newrt) {
-	// check if destination address is in routing table
-	if (routingTable.count(newrt->dest) == 0) {
-		// brand new route
+bool IPLayer::mergeRoute(route_entry newrt) {
+	if(linkLayer->isLocalAddr(newrt.dest)) {
+		// destination address is local address
+		return false;
+	} else if (routingTable.count(newrt.dest) == 0) {
+		// new route not in routing table
 		clearExpiredRoutes();
 		if (routingTable.size() < MAX_ROUTES) {
 			// space available in table
 		} else {
 			// routing table full
 			cout << "Routing table full. Discarding new route." << endl;
-			return;
+			return false;
 		}
 	} else { // existing route
-		route_entry oldrt = routingTable[newrt->dest];
-		if (newrt->cost < oldrt.cost) {
+		route_entry oldrt = routingTable[newrt.dest];
+		if (newrt.cost < oldrt.cost) {
 			// new route is lower cost
-		} else if (newrt->nextHop == oldrt.nextHop) {
-			// nexthop metrics may have changed
+		} else if (newrt.nextHop == oldrt.nextHop) {
+			// same route, update time stamp and nothing else
+			pthread_rwlock_wrlock(&rtLock);
+			routingTable[newrt.dest].lastUpdate = clock();
+			pthread_rwlock_unlock(&rtLock);
+			return false;
 		} else {
 			// route uninteresting
-			return;
+			return false;
 		}
 	}
 
 	// add new route
 	pthread_rwlock_wrlock(&rtLock);
-	newrt->lastUpdate = clock();
-	routingTable[newrt->dest] = *newrt;
+	newrt.lastUpdate = clock();
+	routingTable[newrt.dest] = newrt;
 	pthread_rwlock_unlock(&rtLock);
+	return true;
 }
 
 /**

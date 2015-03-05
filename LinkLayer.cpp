@@ -21,8 +21,9 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	rcvSocket = createSocket(localPhy, localAI, true);
 
 	// print link layer configuration
+	cout << "===================================" << endl;
 	cout << "Node Configuration" << endl;
-	cout << "==============================" << endl;
+	cout << "===================================" << endl;
 	cout << "Local phy address : " << localPhy.ipAddr << endl;
 	cout << "Local phy port    : " << localPhy.port << endl;
 	for(vector<itf_info>::size_type i = 0; i != itfs.size(); i++){
@@ -31,16 +32,16 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 		ssLocks.push_back(ssLock);
 
 		// print interface info
-		cout << "------------------------------" << endl;
+		cout << "-----------------------------------" << endl;
 		cout << "Interface " << i << endl;
-		cout << "------------------------------" << endl;
+		cout << "-----------------------------------" << endl;
 		cout << "Remote phy address : " << itfs[i].rmtPhy.ipAddr << endl;
 		cout << "Remote phy port    : " << itfs[i].rmtPhy.port << endl;
 		cout << "Local vip          : " << itfs[i].locAddr << endl;
 		cout << "Remote vip         : " << itfs[i].rmtAddr << endl;
 		cout << "MTU                : " << itfs[i].mtu << endl;
 	}
-	cout << "==============================" << endl;
+	cout << "===================================" << endl;
 }
 
 /**

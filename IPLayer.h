@@ -42,7 +42,7 @@ class IPLayer {
 		void sendRIPUpdate(int itfNum);
 		void sendRIPRequest(int itfNum);
 		void updateRoutingTable(char* rdata, u_int32_t saddr);
-		void mergeRoute(route_entry* newrt);
+		bool mergeRoute(route_entry newrt);
 		void clearExpiredRoutes();
 		bool clearExpiredRoute(u_int32_t dest);
 
