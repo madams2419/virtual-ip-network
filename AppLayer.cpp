@@ -112,6 +112,13 @@ void AppLayer::setMTU(string itf, string mtu) {
 }
 
 /**
+ * Toggle debug mode
+ */
+void AppLayer::toggleDebug() {
+	ipLayer->toggleDebug();
+}
+
+/**
  * Parse and execute string command
  */
 void AppLayer::processCommand(const string& command){
@@ -143,6 +150,8 @@ void AppLayer::processCommand(const string& command){
 		deactivateInterface(toDo[1]);
 	} else if (commandType.compare("mtu") == 0) {
 		setMTU(toDo[1], toDo[2]);
+	} else if (commandType.compare("debug") == 0) {
+		toggleDebug();
 	} else {
 		cout << "The command is " << commandType << " which cannot be recognized. Please try again." << endl;
 	}

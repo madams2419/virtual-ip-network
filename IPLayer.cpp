@@ -148,6 +148,12 @@ void IPLayer::setMTU(int itf, int newMTU) {
 	}
 }
 
+/**
+ * Toggle debug mode
+ */
+void IPLayer::toggleDebug() {
+	debug = !debug;
+}
 
 /**
  * Static worker thread dispatch point
@@ -377,7 +383,7 @@ void IPLayer::handleRIPPacket(char* packet) {
 	if (rcom == 1) { // packet is RIP request; send RIP response
 		sendRIPUpdate(rcvItf);
 	} else if (rcom == 2) { // packet is RIP response; update routing table
-		printRIPPacket((char*) rhdr, hdr->saddr);
+		if (debug) printRIPPacket((char*) rhdr, hdr->saddr);
 		updateRoutingTable((char*) rhdr, hdr->saddr);
 	} else {
 		cout << "Unknown RIP command " << rcom << endl;
@@ -424,7 +430,10 @@ void IPLayer::updateRoutingTable(char* rdata, u_int32_t saddr) {
  */
 bool IPLayer::mergeRoute(route_entry newrt) {
 	if(linkLayer->getInterfaceFromLocalAddr(newrt.dest) >= 0) {
-		// destination address is local address
+		// destination address is local address so ignore route
+		return false;
+	} else if (linkLayer->getInterfaceFromLocalAddr(newrt.nextHop) >= 0) {
+		// next hop is local address. ignore route b/c I know better
 		return false;
 	} else if (routingTable.count(newrt.dest) == 0) {
 		// new route not in routing table

@@ -16,6 +16,7 @@
 #define MAX_RCV_LEN 64000
 #define RIP_UPDATE_INT 5
 #define ROUTE_EXP_TIME 12
+#define INF_COST 16
 
 typedef struct {
 	char* ipAddr;

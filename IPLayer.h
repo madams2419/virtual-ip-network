@@ -25,6 +25,7 @@ class IPLayer {
 		pthread_rwlock_t rtLock, rqLock;
 		LinkLayer* linkLayer;
 		int defaultItf;
+		bool debug;
 
 		void runListening();
 		void runRouting();
@@ -64,6 +65,7 @@ class IPLayer {
 		void activateInterface(int itf);
 		void deactivateInterface(int itf);
 		void setMTU(int itf, int newMTU);
+		void toggleDebug();
 };
 
 #endif
