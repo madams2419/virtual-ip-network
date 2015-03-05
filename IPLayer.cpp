@@ -416,8 +416,8 @@ void IPLayer::clearExpiredRoutes() {
 		double timeElapsed = (clock() - rentry->lastUpdate()) / (double) CLOCKS_PER_SEC;
 		if (timeElapsed > ROUTE_EXP_TIME) {
 			// remove expired entry
+			routingTable.clear(dest);
 		}
-		it++;
 	}
 	pthread_rwlock_unlock(&rtLock);
 }
