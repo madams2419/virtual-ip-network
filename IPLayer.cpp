@@ -40,6 +40,9 @@ IPLayer::IPLayer(LinkLayer* link) {
 	// initialize routing table
 	initRoutingTable();
 
+	// DEBUG
+	printRoutes();
+
 	// send requests on all intefaces
 	sendRIPRequests();
 
@@ -210,14 +213,17 @@ void IPLayer::sendRIPUpdates() {
 		int numRoutes = routingTable.size();
 		pthread_rwlock_rdlock(&rtLock);
 		rip_entry routes[numRoutes];
+		map<u_int32_t, route_entry>::iterator it = routingTable.begin();
+		int cnt = 0;
+		while(it != routingTable.end()) {
+			u_int32_t dest = it->first;
+			route_entry rentry = it->second;
 
-		//DEBUG
-		cout << "numRoutes: " << numRoutes << endl;
-		cout << "rt.size(): " << routingTable.size() << endl;
-		for(int i = 0; i < numRoutes; i++) {
-			cout << "rt.size(): " << routingTable.size() << endl;
-			routes[i].cost = routingTable[i].cost;
-			routes[i].address = routingTable[i].dest;
+			routes[cnt].cost = rentry.cost;
+			routes[cnt].address = dest;
+
+			cnt++;
+			it++;
 		}
 		pthread_rwlock_unlock(&rtLock);
 
