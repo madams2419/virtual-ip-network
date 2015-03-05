@@ -121,7 +121,6 @@ void IPLayer::activateInterface(int itf) {
 		printf("Interface %d not found.\n", itf + 1);
 	} else {
 		interfaces->at(itf).down = false;
-		cout << "Before broadcast..." << endl;
 		broadcastRIPRequests();
 		printf("Interface %d up.\n", itf + 1);
 	}
@@ -368,10 +367,27 @@ void IPLayer::handleRIPPacket(char* packet) {
 	if (rcom == 1) { // packet is RIP request; send RIP response
 		sendRIPUpdate(rcvItf);
 	} else if (rcom == 2) { // packet is RIP response; update routing table
+		//printRIPPacket((char*) rhdr, hdr->saddr);
 		updateRoutingTable((char*) rhdr, hdr->saddr);
 	} else {
 		cout << "Unknown RIP command " << rcom << endl;
 	}
+}
+
+/**
+ * Print RIP packet data
+ */
+void IPLayer::printRIPPacket(char* rdata, u_int32_t saddr) {
+	rip_hdr* rhdr = (rip_hdr*) rdata;
+	rip_entry* rentry = (rip_entry*) &rdata[sizeof(rip_hdr)];
+	cout << "-----------------------------------------" << endl;
+	for (int i = 0; i < rhdr->num_entries; i++) {
+		struct in_addr destIA;
+		destIA.s_addr = rentry[i].address;
+		cout << "Address : " << inet_ntoa(destIA) << endl;
+		cout << "Cost    : " << rentry[i].cost << endl;
+	}
+	cout << "-----------------------------------------" << endl;
 }
 
 /**
