@@ -63,6 +63,7 @@ class IPLayer {
 		void printRoutes();
 		void activateInterface(int itf);
 		void deactivateInterface(int itf);
+		void setMTU(int itf, int newMTU);
 };
 
 #endif

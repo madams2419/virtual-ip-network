@@ -116,11 +116,11 @@ void IPLayer::printRoutes() {
  */
 void IPLayer::activateInterface(int itf) {
 	if (itf < 0 || itf >= interfaces->size()) {
-		printf("Interface %d not found.\n", itf + 1);
+		printf("Interface %d not found\n", itf + 1);
 	} else {
 		interfaces->at(itf).down = false;
 		broadcastRIPRequests();
-		printf("Interface %d up.\n", itf + 1);
+		printf("Interface %d up\n", itf + 1);
 	}
 }
 
@@ -129,12 +129,25 @@ void IPLayer::activateInterface(int itf) {
  */
 void IPLayer::deactivateInterface(int itf) {
 	if (itf < 0 || itf >= interfaces->size()) {
-		printf("Interface %d not found.\n", itf + 1);
+		printf("Interface %d not found\n", itf + 1);
 	} else {
 		interfaces->at(itf).down = true;
-		printf("Interface %d down.\n", itf + 1);
+		printf("Interface %d down\n", itf + 1);
 	}
 }
+
+/**
+ * Set interface MTU
+ */
+void IPLayer::setMTU(int itf, int newMTU) {
+	if (itf < 0 || itf >= interfaces->size()) {
+		printf("Interface %d not found\n", itf + 1);
+	} else {
+		interfaces->at(itf).mtu = newMTU;
+		printf("Set MTU=%d for interface %d\n", newMTU, itf + 1);
+	}
+}
+
 
 /**
  * Static worker thread dispatch point
@@ -149,7 +162,7 @@ void *IPLayer::runThread(void* pkg) {
 	} else if (toRun == "rip_updating") {
 		ipl->runRouting();
 	} else {
-		cout << "Invalid toRun command." << endl;
+		cout << "Invalid toRun command" << endl;
 	}
 }
 
@@ -165,7 +178,7 @@ void IPLayer::runListening() {
 		// get packet
 		rcvLen = linkLayer->listen(buf, sizeof(buf));
 		if (rcvLen < 0) {
-			printf("IP Layer receive error.\n");
+			printf("IP Layer receive error\n");
 			continue;
 		}
 
@@ -312,7 +325,7 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 
 	// check to make sure receive length equals header total length
 	if (hdr->tot_len != len) {
-		printf("Partial packet received, discarding.\n");
+		printf("Partial packet received, discarding\n");
 		return;
 	}
 
@@ -320,7 +333,7 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	u_int16_t rcvCheck = hdr->check;
 	hdr->check = 0;
 	if (rcvCheck != ip_sum(packet, HDR_SIZE)) {
-		printf("Invalid checksum, discarding packet.\n");
+		printf("Invalid checksum, discarding packet\n");
 		return;
 	}
 
@@ -356,7 +369,7 @@ void IPLayer::handleRIPPacket(char* packet) {
 	int rlen = sizeof(rip_hdr) + rhdr->num_entries * sizeof(rip_entry);
 	int ipdlen = hdr->tot_len - hswop;
 	if (rlen != ipdlen) {
-		cout << "RIP data length does not agree with IP packet length. Dropping packet.";
+		cout << "RIP data length does not agree with IP packet length: packet discarded";
 		return;
 	}
 
@@ -420,7 +433,7 @@ bool IPLayer::mergeRoute(route_entry newrt) {
 			// space available in table
 		} else {
 			// routing table full
-			cout << "Routing table full. Discarding new route." << endl;
+			cout << "Routing table full: new route discarded" << endl;
 			return false;
 		}
 	} else { // existing route
@@ -486,7 +499,7 @@ void IPLayer::forward(char* packet, int itf) {
 
 	// decrement ttl or return if zero
 	if (hdr->ttl == 0) {
-		printf("TTL = 0, discarding packet.\n");
+		printf("TTL = 0: packet discarded\n");
 		return;
 	} else { // decrement ttl and recalculate checksum
 		hdr->ttl--;
@@ -500,7 +513,7 @@ void IPLayer::forward(char* packet, int itf) {
 	// send packet via link layer
 	int bytesSent;
 	if((bytesSent = linkLayer->send(packet, len, itf)) < 0) {
-		printf("Sending error.\n");
+		printf("Sending error\n");
 	}
 }
 
@@ -576,7 +589,7 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 	int packetLen = dataLen + HDR_SIZE;
 	int mtu = linkLayer->getMTU(itfNum);
 	if (packetLen > mtu) {
-		printf("Packet length greater than interface MTU. Fragmenting...");
+		printf("Packet length greater than interface MTU: fragmenting...");
 		//TODO fragmentation
 		return -1;
 	}
@@ -598,7 +611,7 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 
 	// send packet via link layer
 	if((bytesSent = linkLayer->send(packet, packetLen, itfNum)) < 0) {
-		printf("Sending error.\n");
+		printf("Sending error\n");
 		return -1;
 	}
 

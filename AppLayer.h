@@ -20,6 +20,7 @@ class AppLayer {
 		void printRoutes();
 		void activateInterface(std::string itf);
 		void deactivateInterface(std::string itf);
+		void setMTU(std::string itf, std::string mtu);
 
 
 	public:

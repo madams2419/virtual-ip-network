@@ -49,7 +49,7 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
  */
 void LinkLayer::printInterfaces() {
 	for(int i = 0; i < itfs.size(); i++){
-		printf("%d\t%s\t%s\n", i+1, itfs[i].locAddr, (itfs[i].down) ? "down" : "up");
+		printf("%d\t%s\t%s\tMTU=%d\n", i+1, itfs[i].locAddr, (itfs[i].down) ? "down" : "up", itfs[i].mtu);
 	}
 }
 
@@ -72,7 +72,7 @@ u_int32_t LinkLayer::getInterfaceRemoteAddr(int itf) {
  */
 u_int32_t LinkLayer::getInterfaceAddr(int itf, string type) {
 	if (!itfNumValid(itf)) {
-		cout << "Link Layer Error: " << itf << " is not a valid interface number.";
+		cout << "Link Layer Error: " << itf << " is not a valid interface number";
 		return -1;
 	}
 
@@ -82,7 +82,7 @@ u_int32_t LinkLayer::getInterfaceAddr(int itf, string type) {
 	} else if (type == "remote") {
 		addrChar = itfs[itf].rmtAddr;
 	} else {
-		cout << "Link Layer Error: " << type << " is not a valid address type." << endl;
+		cout << "Link Layer Error: " << type << " is not a valid address type" << endl;
 		return -1;
 	}
 

@@ -103,6 +103,15 @@ void AppLayer::deactivateInterface(string itf) {
 }
 
 /**
+ * Set interface MTU
+ */
+void AppLayer::setMTU(string itf, string mtu) {
+	int itfNum = atoi(itf.c_str()) - 1;
+	int newMTU = atoi(mtu.c_str());
+	ipLayer->setMTU(itfNum, newMTU);
+}
+
+/**
  * Parse and execute string command
  */
 void AppLayer::processCommand(const string& command){
@@ -132,6 +141,8 @@ void AppLayer::processCommand(const string& command){
 		activateInterface(toDo[1]);
 	} else if (commandType.compare("down") == 0) {
 		deactivateInterface(toDo[1]);
+	} else if (commandType.compare("mtu") == 0) {
+		setMTU(toDo[1], toDo[2]);
 	} else {
 		cout << "The command is " << commandType << " which cannot be recognized. Please try again." << endl;
 	}
