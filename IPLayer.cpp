@@ -70,13 +70,14 @@ void IPLayer::initRoutingTable() {
 	for (int i = 0; i < interfaces->size(); i++) {
 		itf_info itf = interfaces->at(i);
 		u_int32_t dest = inet_addr(itf.rmtAddr);
-		route_entry rentry;
 
 		// populate route entry
-		rentry.dest = dest;
-		rentry.nextHop = i; // current interface number
+		route_entry rentry;
+		rentry.dest = dest; // interface remote address
+		rentry.nextHop = dest; // dest is nextHop
 		rentry.cost = 1; // one for adjacent nodes
-		rentry.lastUpdate = clock(); // entry never expires
+		rentry.lastUpdate = clock(); // currrent timestamp
+		rentry.itf = i; // current interface num
 
 		routingTable[dest] = rentry;
 	}
@@ -98,11 +99,11 @@ void IPLayer::printRoutes() {
 	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
 	while(it != routingTable.end()) {
 		u_int32_t dest = it->first;
-		route_entry r = it->second;
+		route_entry rentry = it->second;
 		struct in_addr destIA;
 		destIA.s_addr = dest;
 		string destStr = inet_ntoa(destIA);
-		cout << destStr << "\t" << r.itf + 1 << "\t" << r.cost << endl;
+		cout << destStr << "\t" << rentry.itf + 1 << "\t" << rentry.cost << endl;
 		it++;
 	}
 	pthread_rwlock_unlock(&rtLock);
