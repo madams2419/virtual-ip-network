@@ -225,8 +225,10 @@ void IPLayer::broadcastRIPUpdates() {
  * Send RIP update to specified address
  */
 void IPLayer::sendRIPUpdate(int itfNum) {
-	if (!linkLayer->itfNumValid(itfNum) || interfaces->at(itfNum).down)
+	if (!linkLayer->itfNumValid(itfNum) || interfaces->at(itfNum).down) {
+		cout << "Send RIP Update." << endl;
 		return;
+	}
 
 	// get interface
 	itf_info itf = interfaces->at(itfNum);
@@ -292,7 +294,10 @@ void IPLayer::broadcastRIPRequests() {
  * Send RIP request on specified interface
  */
 void IPLayer::sendRIPRequest(int itfNum) {
-	if (!linkLayer->itfNumValid(itfNum)) return;
+	if (!linkLayer->itfNumValid(itfNum)) {
+		cout << "Send RIP requst." << endl;
+		return;
+	}
 
 	// get interface
 	itf_info itf = interfaces->at(itfNum);
@@ -328,6 +333,7 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	// return if packet was delivered over a down interface
 	locItf = linkLayer->getInterfaceFromLocalAddr(hdr->daddr);
 	if (linkLayer->itfNumValid(locItf) && interfaces->at(locItf).down) {
+		cout << "Handle new packet." << endl;
 		return;
 	}
 
@@ -449,11 +455,7 @@ bool IPLayer::mergeRoute(route_entry newrt) {
 		if (newrt.cost < oldrt.cost) {
 			// new route is lower cost
 		} else if (newrt.nextHop == oldrt.nextHop) {
-			// same route, update time stamp and nothing else
-			pthread_rwlock_wrlock(&rtLock);
-			routingTable[newrt.dest].lastUpdate = clock();
-			pthread_rwlock_unlock(&rtLock);
-			return false;
+			// metric for nextHop might have changed
 		} else {
 			// route uninteresting
 			return false;
@@ -483,9 +485,8 @@ void IPLayer::clearExpiredRoutes() {
 }
 
 /**
- * Remove specified route from routing table if it has expired
- * Return true if the route is expired and removed
- * Return false if the route is not expired or not in the table
+ * Remove specified route from routing table if it has expired or has cost of infinity
+ * Return true if the route is removed, otherwise return false.
  */
 bool IPLayer::clearExpiredRoute(u_int32_t dest) {
 	if (routingTable.count(dest) == 0) return false;
