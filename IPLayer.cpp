@@ -39,9 +39,6 @@ IPLayer::IPLayer(LinkLayer* link) {
 	// initialize routing table
 	initRoutingTable();
 
-	// send requests on all intefaces
-	broadcastRIPRequests();
-
 	// create thread to listen for packets
 	pthread_t* listWorker = new pthread_t;
 	thread_pkg* lpkg = new thread_pkg;
@@ -50,6 +47,9 @@ IPLayer::IPLayer(LinkLayer* link) {
 	if(pthread_create(listWorker, NULL, &runThread, (void*) lpkg) != 0) {
 		perror("Threading error:");
 	}
+
+	// send requests on all intefaces
+	broadcastRIPRequests();
 
 	// create thread to send RIP updates
 	pthread_t* ripWorker = new pthread_t;
@@ -143,12 +143,13 @@ void *IPLayer::runThread(void* pkg) {
 	IPLayer* ipl = tp->ipl;
 	string toRun = tp->toRun;
 
-	if(toRun.compare("listening"))
+	if(toRun == "listening") {
 		ipl->runListening();
-	else if (toRun.compare("rip_updating"))
+	} else if (toRun == "rip_updating") {
 		ipl->runRouting();
-	else
+	} else {
 		cout << "Invalid toRun command." << endl;
+	}
 }
 
 /**
@@ -221,7 +222,7 @@ void IPLayer::sendRIPUpdate(int itfNum) {
 	int cnt;
 	for (cnt = 0; cnt < interfaces->size(); cnt++) {
 		routes[cnt].cost = 0;
-		routes[cnt].address = inet_addr(linkLayer->getInterfaceAddr(cnt));
+		routes[cnt].address = linkLayer->getInterfaceLocalAddr(cnt);
 	}
 
 	// fill buffer with routing table information
@@ -304,7 +305,7 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	hdr = (struct iphdr*) packet;
 
 	// return if packet was delivered over a down interface
-	locItf = linkLayer->getInterfaceID(hdr->daddr);
+	locItf = linkLayer->getInterfaceFromLocalAddr(hdr->daddr);
 	if (linkLayer->itfNumValid(locItf) && interfaces->at(locItf).down) {
 		return;
 	}
@@ -324,12 +325,10 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 	}
 
 	// forward, delivery locally, or handle RIP
-	if ((fwdItf = getFwdInterface(hdr->daddr)) == -1) {
-		if (hdr->protocol == 200) {
-			handleRIPPacket(packet);
-		} else {
-			deliverLocal(packet);
-		}
+	if (hdr->protocol == 200) {
+		handleRIPPacket(packet);
+	} else if ((fwdItf = getFwdInterface(hdr->daddr)) == -1) {
+		deliverLocal(packet);
 	} else {
 		forward(packet, fwdItf);
 	}
@@ -347,7 +346,13 @@ void IPLayer::handleRIPPacket(char* packet) {
 	// get rip header
 	rip_hdr* rhdr = (rip_hdr*) &packet[hswop];
 
-	// length verification
+	// verify that packet was received from connected node
+	int rcvItf = linkLayer->getInterfaceFromRemoteAddr(hdr->saddr);
+	if (rcvItf == -1) {
+		return;
+	}
+
+	// verify ip packet length and RIP payload length
 	int rlen = sizeof(rip_hdr) + rhdr->num_entries * sizeof(rip_entry);
 	int ipdlen = hdr->tot_len - hswop;
 	if (rlen != ipdlen) {
@@ -356,9 +361,9 @@ void IPLayer::handleRIPPacket(char* packet) {
 	}
 
 	int rcom = rhdr->command;
-	if (rcom == 1) {
-		sendRIPUpdate(getFwdInterface(hdr->saddr));
-	} else if (rcom == 2) {
+	if (rcom == 1) { // packet is RIP request; send RIP response
+		sendRIPUpdate(rcvItf);
+	} else if (rcom == 2) { // packet is RIP response; update routing table
 		updateRoutingTable((char*) rhdr, hdr->saddr);
 	} else {
 		cout << "Unknown RIP command " << rcom << endl;
@@ -390,7 +395,7 @@ void IPLayer::updateRoutingTable(char* rdata, u_int32_t saddr) {
  * Returns true if routing table routes are changed or added.
  */
 bool IPLayer::mergeRoute(route_entry newrt) {
-	if(linkLayer->getInterfaceID(newrt.dest) >= 0) {
+	if(linkLayer->getInterfaceFromLocalAddr(newrt.dest) >= 0) {
 		// destination address is local address
 		return false;
 	} else if (routingTable.count(newrt.dest) == 0) {
@@ -565,7 +570,7 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 	char packet[packetLen];
 
 	// get local IP address associated with interface in network order int form
-	saddr = inet_addr(linkLayer->getInterfaceAddr(itfNum));
+	saddr = linkLayer->getInterfaceLocalAddr(itfNum);
 
 	// generate new data IP header
 	genHeader(packet, dataLen, saddr, daddr, rip);
@@ -649,8 +654,8 @@ void IPLayer::bufSerialize(char* buf, int len) {
  * Returns -1 if the address matches one of the interface addresses.
  */
 int IPLayer::getFwdInterface(u_int32_t daddr) {
-	// check if network number is equal to the destination of any of the interfaces
-	if (linkLayer->getInterfaceID(daddr) >= 0) {
+	// check if address is local interface address
+	if (linkLayer->getInterfaceFromLocalAddr(daddr) >= 0) {
 		return -1;
 	}
 

@@ -5,6 +5,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <string.h>
 #include <pthread.h>
 #include "constants.h"
 
@@ -20,13 +21,17 @@ class LinkLayer {
 
 		void start();
 		int createSocket(phy_info phyInfo, struct addrinfo* ai, bool bindSock);
+		u_int32_t getInterfaceAddr(int itf, std::string type);
+		int getInterfaceFromAddr(u_int32_t addr, std::string type);
 
 	public:
 		LinkLayer(phy_info localPhy, std::vector<itf_info> itfs);
 		int send(char* data, int dataLen, int itfNum);
 		int listen(char* buf, int bufLen);
-		char* getInterfaceAddr(int itf);
-		int getInterfaceID(u_int32_t addr);
+		u_int32_t getInterfaceLocalAddr(int itf);
+		u_int32_t getInterfaceRemoteAddr(int itf);
+		int getInterfaceFromLocalAddr(u_int32_t addr);
+		int getInterfaceFromRemoteAddr(u_int32_t addr);
 		int getMTU(int itfNum) {return itfs[itfNum].mtu;};
 		void setMTU(int itfNum, int mtu) {itfs[itfNum].mtu = mtu;};
 		std::vector<itf_info>* getInterfaces() {return &itfs;};

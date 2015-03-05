@@ -56,20 +56,64 @@ void LinkLayer::printInterfaces() {
 /**
  * Returns the local IP address associated with the specified interface
  */
-char* LinkLayer::getInterfaceAddr(int itf) {
-	if (!itfNumValid(itf)) return NULL;
-	char* addr = itfs[itf].locAddr;
-	return addr;
+u_int32_t LinkLayer::getInterfaceLocalAddr(int itf) {
+	return getInterfaceAddr(itf, "local");
+}
+
+/**
+ * Returns the remote IP address associated with the specified interface
+ */
+u_int32_t LinkLayer::getInterfaceRemoteAddr(int itf) {
+	return getInterfaceAddr(itf, "remote");
+}
+
+/**
+ * Returns the local or remote IP address associated with the specified interface
+ */
+u_int32_t LinkLayer::getInterfaceAddr(int itf, string type) {
+	if (!itfNumValid(itf)) {
+		cout << "Link Layer Error: " << itf << " is not a valid interface number.";
+		return -1;
+	}
+
+	char* addrChar;
+	if (type == "local") {
+		addrChar = itfs[itf].locAddr;
+	} else if (type == "remote") {
+		addrChar = itfs[itf].rmtAddr;
+	} else {
+		cout << "Link Layer Error: " << type << " is not a valid address type." << endl;
+		return -1;
+	}
+
+	return inet_addr(addrChar);
+}
+
+/**
+ * Returns ID of interface with remote VIP matching addr
+ * Returns -1 if no such interface exists
+ */
+int LinkLayer::getInterfaceFromRemoteAddr(u_int32_t addr) {
+	return getInterfaceFromAddr(addr, "remote");
+}
+
+/**
+ * Returns ID of interface with local VIP matching addr
+ * Returns -1 if no such interface exists
+ */
+int LinkLayer::getInterfaceFromLocalAddr(u_int32_t addr) {
+	return getInterfaceFromAddr(addr, "local");
 }
 
 /**
  * Returns ID of interface with local VIP matched addr
  * Returns -1 if no such interface exists
  */
-int LinkLayer::getInterfaceID(u_int32_t addr) {
+int LinkLayer::getInterfaceFromAddr(u_int32_t addr, string type) {
 	for(int i = 0; i < itfs.size(); i++) {
-		if (addr == inet_addr(getInterfaceAddr(i)))
+		if (addr == getInterfaceAddr(i, type)) {
 			return i;
+		}
 	}
 	return -1;
 }
