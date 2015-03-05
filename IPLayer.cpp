@@ -79,10 +79,8 @@ void IPLayer::initRoutingTable() {
 		rentry.itf = i; // current interface num
 
 		pthread_rwlock_wrlock(&rtLock);
-		cout << "init route lock " << pthread_self() << endl;
 		routingTable[dest] = rentry;
 		pthread_rwlock_unlock(&rtLock);
-		cout << "init route unlock " << pthread_self() << endl;
 	}
 }
 
@@ -99,7 +97,6 @@ void IPLayer::printInterfaces() {
 void IPLayer::printRoutes() {
 	clearExpiredRoutes();
 	pthread_rwlock_rdlock(&rtLock);
-		cout << "print rt lock " << pthread_self() << endl;
 	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
 	while(it != routingTable.end()) {
 		u_int32_t dest = it->first;
@@ -111,7 +108,6 @@ void IPLayer::printRoutes() {
 		it++;
 	}
 	pthread_rwlock_unlock(&rtLock);
-		cout << "print rt unlock " << pthread_self() << endl;
 }
 
 /**
@@ -226,7 +222,6 @@ void IPLayer::sendRIPUpdate(int itfNum) {
 
 	// fill buffer with routing table information
 	pthread_rwlock_rdlock(&rtLock);
-		cout << "send rip lock " << pthread_self() << endl;
 	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
 	while (it != routingTable.end()) {
 		u_int32_t dest = it->first;
@@ -239,7 +234,6 @@ void IPLayer::sendRIPUpdate(int itfNum) {
 		it++;
 	}
 	pthread_rwlock_unlock(&rtLock);
-		cout << "send rip unlock " << pthread_self() << endl;
 
 	// format RIP update data
 	int routesSize = numEntries * sizeof(rip_entry);
@@ -409,10 +403,8 @@ bool IPLayer::mergeRoute(route_entry newrt) {
 		} else if (newrt.nextHop == oldrt.nextHop) {
 			// same route, update time stamp and nothing else
 			pthread_rwlock_wrlock(&rtLock);
-		cout << "merge1 lock " << pthread_self() << endl;
 			routingTable[newrt.dest].lastUpdate = clock();
 			pthread_rwlock_unlock(&rtLock);
-		cout << "merge1 unlock " << pthread_self() << endl;
 			return false;
 		} else {
 			// route uninteresting
@@ -421,11 +413,9 @@ bool IPLayer::mergeRoute(route_entry newrt) {
 	}
 
 	// add new route
-		cout << "merge2 lock " << pthread_self() << endl;
 	pthread_rwlock_wrlock(&rtLock);
 	newrt.lastUpdate = clock();
 	routingTable[newrt.dest] = newrt;
-		cout << "merge2 unlock " << pthread_self() << endl;
 	pthread_rwlock_unlock(&rtLock);
 	return true;
 }
@@ -434,12 +424,14 @@ bool IPLayer::mergeRoute(route_entry newrt) {
  * Iterate through routing table and clear any expired entries
  */
 void IPLayer::clearExpiredRoutes() {
+	pthread_rwlock_wrlock(&rtLock);
 	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
 	while(it != routingTable.end()) {
 		u_int32_t dest = it->first;
 		it++;
 		clearExpiredRoute(dest);
 	}
+	pthread_rwlock_unlock(&rtLock);
 }
 
 /**
@@ -451,16 +443,8 @@ bool IPLayer::clearExpiredRoute(u_int32_t dest) {
 	if (routingTable.count(dest) == 0) return false;
 	route_entry rentry = routingTable[dest];
 	double timeElapsed = (clock() - rentry.lastUpdate) / (double) CLOCKS_PER_SEC;
-	struct in_addr test;
-	test.s_addr = dest;
-	cout << "Time elapsed for " << inet_ntoa(test) << " : " << timeElapsed << endl;
-	cout << "Route exp time " << ROUTE_EXP_TIME << endl;
 	if (timeElapsed > (double) ROUTE_EXP_TIME) {
-		pthread_rwlock_wrlock(&rtLock);
-		cout << "clear exp lock" << pthread_self() << endl;
 		routingTable.erase(dest);
-		pthread_rwlock_unlock(&rtLock);
-		cout << "clear exp unlock" << pthread_self() << endl;
 		return true;
 	}
 	return false;
@@ -665,19 +649,18 @@ int IPLayer::getFwdInterface(u_int32_t daddr) {
 
 	int ret;
 	pthread_rwlock_rdlock(&rtLock);
-		cout << "get fwd1 lock." << pthread_self() << endl;
 	int daddrCount = routingTable.count(daddr);
 	pthread_rwlock_unlock(&rtLock);
-		cout << "get fwd1 unlock." << pthread_self() << endl;
 	if (daddrCount == 1) { // daddr is in fwd table; return itf value
-		if (clearExpiredRoute(daddr)) { // route is expired
+		pthread_rwlock_wrlock(&rtLock);
+		bool clr = clearExpiredRoute(daddr);
+		pthread_rwlock_unlock(&rtLock);
+		if (clr) { // route is expired
 			ret = defaultItf;
 		} else { // valid route
 			pthread_rwlock_rdlock(&rtLock);
-		cout << "get fwd2 lock." << pthread_self() << endl;
 			ret = routingTable[daddr].itf;
 			pthread_rwlock_unlock(&rtLock);
-		cout << "get fwd2 unlock." << pthread_self() << endl;
 		}
 	} else { // daddr is not in fwd table; return default itf
 		ret = defaultItf;
