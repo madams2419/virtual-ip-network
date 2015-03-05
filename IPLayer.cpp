@@ -245,14 +245,16 @@ void IPLayer::sendRIPUpdate(int itfNum) {
 		routes[cnt].address = linkLayer->getInterfaceLocalAddr(cnt);
 	}
 
-	// fill buffer with routing table information
+	// fill buffer with routing table information using split horizon with poison
 	pthread_rwlock_rdlock(&rtLock);
 	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
 	while (it != routingTable.end()) {
 		u_int32_t dest = it->first;
 		route_entry rentry = it->second;
 
-		routes[cnt].cost = rentry.cost;
+		// apply split horizon with poison algorithm
+		bool learnedRouteFromTarget = (rentry.nextHop == linkLayer->getInterfaceRemoteAddr(itfNum));
+		routes[cnt].cost = (learnedRouteFromTarget) ? INF_COST : rentry.cost;
 		routes[cnt].address = dest;
 
 		cnt++;
