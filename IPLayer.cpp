@@ -102,7 +102,7 @@ void IPLayer::printRoutes() {
 		struct in_addr destIA;
 		destIA.s_addr = dest;
 		string destStr = inet_ntoa(destIA);
-		cout << destStr << "\t" << r.itf << "\t" << r.cost << endl;
+		cout << destStr << "\t" << r.itf + 1 << "\t" << r.cost << endl;
 		it++;
 	}
 	pthread_rwlock_unlock(&rtLock);
@@ -186,8 +186,7 @@ void IPLayer::runRouting() {
 		// send RIP updates
 		broadcastRIPUpdates();
 		// sleep for update interval
-		sleep(ROUTE_UPDATE_INTERVAL);
-		}
+		sleep(RIP_UPDATE_INT);
 	}
 }
 
@@ -355,7 +354,6 @@ void IPLayer::handleRIPPacket(char* packet) {
  * Parses RIP packet and updates routing table
  */
 void IPLayer::updateRoutingTable(char* rdata, u_int32_t saddr) {
-	int itf = getFwdInterface(saddr);
 	rip_hdr* rhdr = (rip_hdr*) rdata;
 	rip_entry* rentry = (rip_entry*) &rdata[sizeof(rip_hdr)];
 	for (int i = 0; i < rhdr->num_entries; i++) {
@@ -372,7 +370,6 @@ void IPLayer::updateRoutingTable(char* rdata, u_int32_t saddr) {
  * Merges data from new route into routing table as appropriate
  */
 void IPLayer::mergeRoute(route_entry* newrt) {
-	bool update = false;
 	// check if destination address is in routing table
 	if (routingTable.count(newrt->dest) == 0) {
 		// brand new route
@@ -385,10 +382,10 @@ void IPLayer::mergeRoute(route_entry* newrt) {
 			return;
 		}
 	} else { // existing route
-		oldrt = routingTable[newrt->dest];
-		if (newrt->cost < oldrt->cost) {
+		route_entry oldrt = routingTable[newrt->dest];
+		if (newrt->cost < oldrt.cost) {
 			// new route is lower cost
-		} else if (newrt->nextHop == oldrt->nextHop) {
+		} else if (newrt->nextHop == oldrt.nextHop) {
 			// nexthop metrics may have changed
 		} else {
 			// route uninteresting
@@ -407,22 +404,31 @@ void IPLayer::mergeRoute(route_entry* newrt) {
  * Iterate through routing table and clear any expired entries
  */
 void IPLayer::clearExpiredRoutes() {
-	pthread_rwlock_wrlock(&rtLock);
 	map<u_int32_t, route_entry>::iterator it = routingTable.begin();
 	while(it != routingTable.end()) {
 		u_int32_t dest = it->first;
-		route_entry rentry = it->second;
 		it++;
-		double timeElapsed = (clock() - rentry->lastUpdate()) / (double) CLOCKS_PER_SEC;
-		if (timeElapsed > ROUTE_EXP_TIME) {
-			// remove expired entry
-			routingTable.clear(dest);
-		}
+		clearExpiredRoute(dest);
 	}
-	pthread_rwlock_unlock(&rtLock);
 }
 
-
+/**
+ * Remove specified route from routing table if it has expired
+ * Return true if the route is expired and removed
+ * Return false if the route is not expired or not in the table
+ */
+bool IPLayer::clearExpiredRoute(u_int32_t dest) {
+	if (routingTable.count(dest) == 0) return false;
+	route_entry rentry = routingTable[dest];
+	double timeElapsed = (clock() - rentry.lastUpdate) / (double) CLOCKS_PER_SEC;
+	if (timeElapsed > ROUTE_EXP_TIME) {
+		pthread_rwlock_wrlock(&rtLock);
+		routingTable.erase(dest);
+		pthread_rwlock_unlock(&rtLock);
+		return true;
+	}
+	return false;
+}
 
 /**
  * Forwards packet on specified interface. Packet must be host order.
@@ -631,8 +637,10 @@ int IPLayer::getFwdInterface(u_int32_t daddr) {
 	int ret;
 	pthread_rwlock_rdlock(&rtLock);
 	if (routingTable.count(daddr) == 1) { // daddr is in fwd table; return itf value
-		printf("Fwd table entry found. Forwarding on itf: %d\n", routingTable[daddr].itf);
-		ret = routingTable[daddr].itf;
+		if (clearExpiredRoute(daddr)) // route is expired
+			ret = defaultItf;
+		else // valid route
+			ret = routingTable[daddr].itf;
 	} else { // daddr is not in fwd table; return default itf
 		printf("Fwd table entry not found. Forwarding on default port.\n");
 		ret = defaultItf;

@@ -11,6 +11,7 @@
 #define DEFAULT_MTU 1400
 #define MAX_RCV_LEN 64000
 #define RIP_UPDATE_INT 5
+#define ROUTE_EXP_TIME 12
 
 typedef struct {
 	char* ipAddr;

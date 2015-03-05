@@ -44,6 +44,7 @@ class IPLayer {
 		void updateRoutingTable(char* rdata, u_int32_t saddr);
 		void mergeRoute(route_entry* newrt);
 		void clearExpiredRoutes();
+		bool clearExpiredRoute(u_int32_t dest);
 
 		//DEBUG
 		void popFwdTable();
