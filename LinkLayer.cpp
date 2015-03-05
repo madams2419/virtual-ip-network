@@ -21,7 +21,7 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 	rcvSocket = createSocket(localPhy, localAI, true);
 
 	// print link layer configuration
-	cout << "LinkLayer Config" << endl;
+	cout << "Node Configuration" << endl;
 	cout << "==============================" << endl;
 	cout << "Local phy address : " << localPhy.ipAddr << endl;
 	cout << "Local phy port    : " << localPhy.port << endl;
@@ -31,9 +31,9 @@ LinkLayer::LinkLayer(phy_info localPhy, vector<itf_info> itfs) {
 		ssLocks.push_back(ssLock);
 
 		// print interface info
-		cout << "---------------------------" << endl;
+		cout << "------------------------------" << endl;
 		cout << "Interface " << i << endl;
-		cout << "---------------------------" << endl;
+		cout << "------------------------------" << endl;
 		cout << "Remote phy address : " << itfs[i].rmtPhy.ipAddr << endl;
 		cout << "Remote phy port    : " << itfs[i].rmtPhy.port << endl;
 		cout << "Local vip          : " << itfs[i].locAddr << endl;
@@ -96,7 +96,6 @@ int LinkLayer::send(char* data, int dataLen, int itfNum) {
 
 	freeaddrinfo(aiDest);
 
-	printf("Sent %d bytes over interface %d\n", bytesSent, itfNum);
 	close(sendSocket);
 
 	// unlock socket mutex
@@ -117,7 +116,6 @@ int LinkLayer::listen(char* buf, int bufLen) {
 		return -1;
 	}
 	pthread_mutex_unlock(&rsLock);
-	printf("Recieved %d bytes", bytesRcvd);
 	return bytesRcvd;
 }
 

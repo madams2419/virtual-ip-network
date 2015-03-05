@@ -41,11 +41,7 @@ void *AppLayer::runListener(void* apl) {
 void AppLayer::getIPData() {
 	while (1) {
 		if (ipLayer->hasData()) {
-			cout << "Message received" << endl;
-			cout << "================================" << endl;
 			cout << ipLayer->getData() << endl;
-			cout << "================================" << endl;
-			cout << "Please enter a command: " << endl;
 		}
 	}
 }
@@ -56,7 +52,6 @@ void AppLayer::getIPData() {
 void AppLayer::getUserCommands() {
 	string input = "";
 	while(1){
-		cout << "Please enter a command: " << endl;
 		getline(cin, input);
 		processCommand(input);
 	}
@@ -73,7 +68,6 @@ void AppLayer::sendData(string instruction[], int counter){
 		else
 			message = message + instruction[i] + " ";
 	}
-	cout << "The destination is " << instruction[1] << " and the message is " << message << endl;
 
 	ipLayer->send(const_cast<char* >(message.c_str()), message.length(), const_cast<char* >(instruction[1].c_str()));
 }
@@ -119,15 +113,12 @@ void AppLayer::processCommand(const string& command){
 	strcpy(line, command.c_str());
 	parse = strtok(line, "  ");
 
-	cout << "The received message is: ";
 	while(parse != NULL){
 		string str = parse;
 		toDo[count] = str;
 		count++;
-		cout << str << " ";
 		parse = strtok(NULL, "  ");
 	}
-	cout << endl;
 
 	string commandType = toDo[0];
 

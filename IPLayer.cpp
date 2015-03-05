@@ -66,7 +66,6 @@ IPLayer::IPLayer(LinkLayer* link) {
  * Initialize routing table based on interfaces
  */
 void IPLayer::initRoutingTable() {
-	pthread_rwlock_wrlock(&rtLock);
 	for (int i = 0; i < interfaces->size(); i++) {
 		itf_info itf = interfaces->at(i);
 		u_int32_t dest = inet_addr(itf.rmtAddr);
@@ -79,9 +78,10 @@ void IPLayer::initRoutingTable() {
 		rentry.lastUpdate = clock(); // currrent timestamp
 		rentry.itf = i; // current interface num
 
+		pthread_rwlock_wrlock(&rtLock);
 		routingTable[dest] = rentry;
+		pthread_rwlock_unlock(&rtLock);
 	}
-	pthread_rwlock_unlock(&rtLock);
 }
 
 /**
@@ -163,8 +163,6 @@ void IPLayer::runListening() {
 		if (rcvLen < 0) {
 			printf("IP Layer receive error.\n");
 			continue;
-		} else {
-			printf("IP packet received.\n");
 		}
 
 		// copy received packet into appropriately sized buffer
@@ -241,6 +239,9 @@ void IPLayer::sendRIPUpdate(int itfNum) {
 	// copy rip route entry array
 	memcpy(&packet[sizeof(rip_hdr)], (char*) routes, routesSize);
 
+	//DEBUG
+	cout << "Sent RIP update" << endl;
+
 	// send RIP packet
 	send(packet, sizeof(packet), itf.rmtAddr, true);
 }
@@ -272,6 +273,9 @@ void IPLayer::sendRIPRequest(int itfNum) {
 	rip->command = 1; // request command
 	rip->num_entries = 0; // no routes in request command
 
+	//DEBUG
+	cout << "Sent RIP request" << endl;
+
 	// send RIP packet
 	send(packet, sizeof(packet), itf.rmtAddr, true);
 }
@@ -289,10 +293,6 @@ void IPLayer::handleNewPacket(char* packet, int len) {
 
 	// parse header
 	hdr = (struct iphdr*) packet;
-
-	//DEBUG
-	cout << "Received packet..." << endl;
-	printHeader(packet);
 
 	// check to make sure receive length equals header total length
 	if (hdr->tot_len != len) {
@@ -455,8 +455,6 @@ void IPLayer::forward(char* packet, int itf) {
 	int bytesSent;
 	if((bytesSent = linkLayer->send(packet, len, itf)) < 0) {
 		printf("Sending error.\n");
-	} else {
-		printf("Forwarded %d bytes on interface %d.\n", bytesSent, itf);
 	}
 }
 
@@ -520,7 +518,7 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 
 	// get LinkLayer interface to send packet over
 	if ((itfNum = getFwdInterface(daddr)) < 0) {
-		printf("Source address belongs to host. Delivering locally.\n");
+		// deliver local if destination address belongs to node
 		string locData(data, dataLen);
 		pthread_rwlock_wrlock(&rqLock);
 		rcvQueue.push(locData);
@@ -548,10 +546,6 @@ int IPLayer::send(char* data, int dataLen, char* destIP, bool rip) {
 
 	// copy data to packet buffer
 	memcpy(&packet[HDR_SIZE], data, dataLen);
-
-	//DEBUG
-	cout << "Sending packet..." << endl;
-	printHeader(packet);
 
 	// convert packet buffer to network byte order
 	bufSerialize(packet, packetLen);
@@ -631,22 +625,23 @@ void IPLayer::bufSerialize(char* buf, int len) {
 int IPLayer::getFwdInterface(u_int32_t daddr) {
 	// check if network number is equal to the destination of any of the interfaces
 	if (linkLayer->isLocalAddr(daddr)) {
-		printf("Destination address is local address. Delivering locally.\n");
 		return -1;
 	}
 
 	int ret;
 	pthread_rwlock_rdlock(&rtLock);
-	if (routingTable.count(daddr) == 1) { // daddr is in fwd table; return itf value
+	int daddrCount = routingTable.count(daddr);
+	pthread_rwlock_unlock(&rtLock);
+	if (daddrCount == 1) { // daddr is in fwd table; return itf value
 		if (clearExpiredRoute(daddr)) // route is expired
 			ret = defaultItf;
 		else // valid route
+			pthread_rwlock_rdlock(&rtLock);
 			ret = routingTable[daddr].itf;
+			pthread_rwlock_unlock(&rtLock);
 	} else { // daddr is not in fwd table; return default itf
-		printf("Fwd table entry not found. Forwarding on default port.\n");
 		ret = defaultItf;
 	}
-	pthread_rwlock_unlock(&rtLock);
 
 	return ret;
 }
