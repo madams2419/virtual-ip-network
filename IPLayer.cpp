@@ -432,9 +432,6 @@ bool IPLayer::mergeRoute(route_entry newrt) {
 	if(linkLayer->getInterfaceFromLocalAddr(newrt.dest) >= 0) {
 		// destination address is local address so ignore route
 		return false;
-	} else if (linkLayer->getInterfaceFromLocalAddr(newrt.nextHop) >= 0) {
-		// next hop is local address. ignore route b/c I know better
-		return false;
 	} else if (routingTable.count(newrt.dest) == 0) {
 		// new route not in routing table
 		clearExpiredRoutes();
