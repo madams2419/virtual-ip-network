@@ -37,7 +37,7 @@ IPLayer::IPLayer(LinkLayer* link) {
 	pthread_rwlock_init(&rqLock, NULL); // request queue lock
 
 	// initialize routing table
-	initRoutingTable();
+	//initRoutingTable();
 
 	// create thread to listen for packets
 	pthread_t* listWorker = new pthread_t;
@@ -63,12 +63,15 @@ IPLayer::IPLayer(LinkLayer* link) {
 }
 
 /**
- * Initialize routing table based on interfaces
+ * (UNUSED) Initialize routing table based on interfaces
  */
 void IPLayer::initRoutingTable() {
 	for (int i = 0; i < interfaces->size(); i++) {
 		itf_info itf = interfaces->at(i);
 		u_int32_t dest = inet_addr(itf.rmtAddr);
+
+		// continue if interface is down
+		if (itf.down) continue;
 
 		// populate route entry
 		route_entry rentry;
@@ -118,6 +121,7 @@ void IPLayer::activateInterface(int itf) {
 		printf("Interface %d not found.\n", itf + 1);
 	} else {
 		interfaces->at(itf).down = false;
+		cout << "Before broadcast..." << endl;
 		broadcastRIPRequests();
 		printf("Interface %d up.\n", itf + 1);
 	}
